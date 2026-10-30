@@ -1,0 +1,282 @@
+---
+title: OpenAI SDK
+description: 用 OpenAI 官方 SDK 调用小熊API
+---
+
+import { TabItem, Tabs } from '@astrojs/starlight/components'
+
+OpenAI 官方 SDK 只需更换 Base URL 和密钥，就能调用小熊API 的 Chat Completions 和 Responses 接口。它也能调用 Claude 和 Gemini 模型，只需更换 `model`。
+
+## 安装
+
+需要 Python 3.10 以上或 Node.js 22 以上。
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```bash
+pip install openai
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```bash
+npm install openai
+```
+
+</TabItem>
+</Tabs>
+
+## 配置
+
+Base URL 要带 `/v1`：
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.little-bear.app/v1",
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js
+import OpenAI from 'openai'
+
+const client = new OpenAI({
+  baseURL: 'https://api.little-bear.app/v1',
+  apiKey: process.env.XIAOXIONG_API_KEY,
+})
+```
+
+</TabItem>
+</Tabs>
+
+### 环境变量
+
+SDK 会自动读取 `OPENAI_BASE_URL` 和 `OPENAI_API_KEY`。设置后，直接用 `OpenAI()` 或 `new OpenAI()` 创建客户端：
+
+<Tabs syncKey="os">
+<TabItem label="macOS / Linux">
+
+```bash
+export OPENAI_BASE_URL="https://api.little-bear.app/v1"
+export OPENAI_API_KEY="sk-你的密钥"
+```
+
+</TabItem>
+<TabItem label="Windows">
+
+```powershell
+$env:OPENAI_BASE_URL="https://api.little-bear.app/v1"
+$env:OPENAI_API_KEY="sk-你的密钥"
+```
+
+</TabItem>
+</Tabs>
+
+## 模型名称
+
+`model` 要与 [模型广场](/pricing) 中的名称完全一致，例如 `gpt-6-luna`、`gpt-6.1-sol`。也可以填 `claude-sonnet-4-6`、`gemini-3-flash` 等 Claude 和 Gemini 模型。
+
+## 示例
+
+示例中的 `client` 即 [配置](#配置) 中创建的客户端。
+
+### 基础请求
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+response = client.chat.completions.create(
+    model="gpt-6-luna",
+    messages=[{"role": "user", "content": "用一段话解释什么是 DNS。"}],
+)
+print(response.choices[0].message.content)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js
+const response = await client.chat.completions.create({
+  model: 'gpt-6-luna',
+  messages: [{ role: 'user', content: '用一段话解释什么是 DNS。' }],
+})
+console.log(response.choices[0].message.content)
+```
+
+</TabItem>
+</Tabs>
+
+### Responses 接口
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+response = client.responses.create(model="gpt-6-luna", input="用一句话介绍你自己。")
+print(response.output_text)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js
+const response = await client.responses.create({ model: 'gpt-6-luna', input: '用一句话介绍你自己。' })
+console.log(response.output_text)
+```
+
+</TabItem>
+</Tabs>
+
+### 流式响应
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+stream = client.chat.completions.create(
+    model="gpt-6-luna",
+    messages=[{"role": "user", "content": "从 1 数到 5"}],
+    stream=True,
+)
+for chunk in stream:
+    if chunk.choices and chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+print()
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js
+const stream = await client.chat.completions.create({
+  model: 'gpt-6-luna',
+  messages: [{ role: 'user', content: '从 1 数到 5' }],
+  stream: true,
+})
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content ?? '')
+}
+process.stdout.write('\n')
+```
+
+</TabItem>
+</Tabs>
+
+最后一块是用量，它的 `choices` 是空数组，读 `choices[0]` 前要先判断。
+
+### 多轮对话
+
+```python
+response = client.chat.completions.create(
+    model="gpt-6-luna",
+    messages=[
+        {"role": "system", "content": "你是一位英语老师，回答尽量简短。"},
+        {"role": "user", "content": "apple 的复数是什么？"},
+        {"role": "assistant", "content": "apples。"},
+        {"role": "user", "content": "那 child 呢？"},
+    ],
+)
+print(response.choices[0].message.content)
+```
+
+### 工具调用
+
+```python
+exchange_rate = {
+    "type": "function",
+    "function": {
+        "name": "get_exchange_rate",
+        "description": "查询两种货币之间的汇率。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "base": {"type": "string", "description": "原币种代码，例如 USD"},
+                "quote": {"type": "string", "description": "目标币种代码，例如 CNY"},
+            },
+            "required": ["base", "quote"],
+        },
+    },
+}
+
+response = client.chat.completions.create(
+    model="gpt-6-luna",
+    messages=[{"role": "user", "content": "100 美元现在能换多少人民币？"}],
+    tools=[exchange_rate],
+)
+for call in response.choices[0].message.tool_calls or []:
+    print(call.function.name, call.function.arguments)
+```
+
+### 异步用法（Python）
+
+```python
+import asyncio
+import os
+from openai import AsyncOpenAI
+
+client = AsyncOpenAI(
+    base_url="https://api.little-bear.app/v1",
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+)
+
+
+async def main():
+    response = await client.chat.completions.create(
+        model="gpt-6-luna",
+        messages=[{"role": "user", "content": "你好"}],
+    )
+    print(response.choices[0].message.content)
+
+
+asyncio.run(main())
+```
+
+## 错误处理
+
+SDK 会抛出带类型的异常，可以分别捕获：
+
+```python
+import openai
+
+try:
+    response = client.chat.completions.create(
+        model="gpt-6-luna",
+        messages=[{"role": "user", "content": "你好"}],
+    )
+except openai.APITimeoutError:
+    print("等了太久没有回应，可以把超时调长一些。")
+except openai.APIConnectionError:
+    print("网络不通，换一条线路再试。")
+except openai.APIStatusError as e:
+    print(f"请求失败（{e.status_code}）：{e.message}")
+```
+
+常见报错：
+
+| 报错 | 原因 | 解决办法 |
+| --- | --- | --- |
+| `404`，地址里有 `/v1/v1` | Base URL 多写了一个 `/v1` | Base URL 里只写一次 `/v1` |
+| 返回一段 HTML，或 SDK 报解析错误 | Base URL 少了 `/v1`，请求打到了控制台网页上 | 在 Base URL 末尾加上 `/v1` |
+| `AuthenticationError`（401） | 密钥不对或已失效 | 详见 [认证](/docs/auth/#检查密钥) |
+| `503` `No available channel for model …` | 模型名不对 | 用 [模型广场](/pricing) 里的名字 |
+
+重试和超时的写法详见 [错误处理](/docs/error-handling/)。
+
+## 下一步
+
+- [OpenAI 格式](/docs/openai/) — 支持的接口、参数和与官方接口的差异
+- [流式响应](/docs/streaming/) — 流式事件格式和用量
+- [错误处理](/docs/error-handling/) — 重试、超时和常见错误
+- [图片生成](/docs/images/) — 用图片接口生成和编辑图片

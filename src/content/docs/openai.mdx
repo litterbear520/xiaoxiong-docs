@@ -1,0 +1,175 @@
+---
+title: OpenAI 格式
+description: 用 OpenAI 接口调用全部对话模型
+---
+
+import { TabItem, Tabs } from '@astrojs/starlight/components'
+
+小熊API 兼容 OpenAI 的 Chat Completions 和 Responses 接口，参数和返回结构与 OpenAI 官方相同。这个格式能调用全部对话模型，包括 Claude 和 Gemini 模型，切换模型只需更改 `model` 参数。SDK 的完整用法参阅 [OpenAI SDK](/docs/sdk/openai/)。
+
+## 端点
+
+Base URL 是 `https://api.little-bear.app/v1`。
+
+| 端点 | 用途 |
+| --- | --- |
+| `POST /v1/chat/completions` | 对话（Chat Completions），大多数工具和 SDK 用它 |
+| `POST /v1/responses` | Responses 接口，Codex 只支持它 |
+| `POST /v1/images/generations` | 生成图片，详见 [图片生成](/docs/images/) |
+| `POST /v1/images/edits` | 编辑图片，详见 [图片生成](/docs/images/#编辑图片) |
+| `GET /v1/models` | 列出可用模型 |
+
+嵌入（embeddings）和语音接口目前没有对应的模型，调用会报 [模型不存在](/docs/errors/#模型不存在)。
+
+## 认证
+
+把 API 密钥作为 Bearer 令牌放进请求头：
+
+```text
+Authorization: Bearer sk-你的密钥
+```
+
+对话和图片接口只认这种写法，用 `x-api-key` 会报 `401 Invalid token`。其他写法详见 [认证](/docs/auth/)。
+
+## 请求示例
+
+示例从环境变量 `XIAOXIONG_API_KEY` 读取密钥，设置方法详见 [快速开始](/docs/quickstart/)。
+
+<Tabs syncKey="lang">
+<TabItem label="cURL">
+
+```bash
+curl https://api.little-bear.app/v1/chat/completions \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-6-luna",
+    "messages": [{"role": "user", "content": "你好"}]
+  }'
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.little-bear.app/v1",
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+)
+
+response = client.chat.completions.create(
+    model="gpt-6-luna",
+    messages=[{"role": "user", "content": "你好"}],
+)
+print(response.choices[0].message.content)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js
+import OpenAI from 'openai'
+
+const client = new OpenAI({
+  baseURL: 'https://api.little-bear.app/v1',
+  apiKey: process.env.XIAOXIONG_API_KEY,
+})
+
+const response = await client.chat.completions.create({
+  model: 'gpt-6-luna',
+  messages: [{ role: 'user', content: '你好' }],
+})
+console.log(response.choices[0].message.content)
+```
+
+</TabItem>
+</Tabs>
+
+返回示例（省略了部分字段）：
+
+```json
+{
+  "object": "chat.completion",
+  "model": "gpt-6-luna",
+  "choices": [
+    {
+      "index": 0,
+      "message": { "role": "assistant", "content": "你好！有什么可以帮你？" },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": { "prompt_tokens": 306, "completion_tokens": 10, "total_tokens": 316 }
+}
+```
+
+Responses 接口的写法如下，Python 和 Node.js 的 `client` 与上面相同：
+
+<Tabs syncKey="lang">
+<TabItem label="cURL">
+
+```bash
+curl https://api.little-bear.app/v1/responses \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-6-luna", "input": "用一句话介绍你自己。"}'
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+response = client.responses.create(model="gpt-6-luna", input="用一句话介绍你自己。")
+print(response.output_text)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js
+const response = await client.responses.create({ model: 'gpt-6-luna', input: '用一句话介绍你自己。' })
+console.log(response.output_text)
+```
+
+</TabItem>
+</Tabs>
+
+## 参数
+
+下表是 GPT 模型的实测结果。用这个格式调用 Claude 和 Gemini 模型时，部分参数的表现不同，详见 [Claude 格式](/docs/claude/#与官方接口的差异) 和 [Gemini 格式](/docs/gemini/#与官方接口的差异)。
+
+| 参数 | 是否生效 | 说明 |
+| --- | --- | --- |
+| `model` | 生效 | 只能用 [模型广场](/pricing) 里的名字 |
+| `messages`、`input` | 生效 | 支持图片输入（`image_url`、`input_image`） |
+| `stream` | 生效 | 详见 [流式响应](#流式响应) |
+| `tools` | 生效 | 工具调用（函数调用） |
+| `response_format` | 生效 | JSON 输出 |
+| `reasoning_effort` | 生效 | 推理强度 |
+| `temperature`、`top_p` | 忽略 | 设置了不报错，但不起作用 |
+| `max_tokens`、`max_completion_tokens`、`max_output_tokens` | 忽略 | 不能限制输出长度，想要短回答就在提示词里说明 |
+| `stop` | 忽略 | 不会在停止词处截断 |
+
+GPT 模型的上游会在每次请求前附带一段约 300 个 token 的固定系统指令，计入输入，所以上面只发了两个字，`prompt_tokens` 也有 306。Claude 和 Gemini 模型没有这段指令。
+
+## 流式响应
+
+在请求体里加 `"stream": true`，返回的是 SSE 流：每行 `data: ` 后面是一段 JSON，最后一行是 `data: [DONE]`。最后一个数据块自带 `usage`，不用另外设置 `stream_options`。事件格式和代码示例详见 [流式响应](/docs/streaming/)。
+
+## 与官方接口的差异
+
+- **模型名** — 只能用 [模型广场](/pricing) 里的名字，`gpt-4o` 这类官方名字会报 [模型不存在](/docs/errors/#模型不存在)
+- **被忽略的参数** — 长度、采样和停止词参数不生效，详见 [参数](#参数)
+- **对话中生成图片** — 不支持 `image_generation` 工具，生成图片用 [图片接口](/docs/images/)
+- **嵌入和语音** — 没有对应的模型
+
+以上为 2026 年 10 月的实测结果，上游调整后可能变化，以实际返回为准。完整参数参阅 [OpenAI 官方 API 参考](https://developers.openai.com/api/reference/overview)。
+
+## 下一步
+
+- [Claude 格式](/docs/claude/) — 用 Messages 接口调用，支持思考和提示缓存
+- [图片生成](/docs/images/) — 用 gpt-image 模型生成和编辑图片
+- [OpenAI SDK](/docs/sdk/openai/) — Python 和 Node.js 的完整用法
+- [错误码](/docs/errors/) — 按状态码和报错原文排查

@@ -1,0 +1,70 @@
+---
+title: Cursor
+description: 在 Cursor 中用自定义 OpenAI 地址接入小熊API
+---
+
+import { Steps } from '@astrojs/starlight/components'
+
+配置 Cursor 使用小熊API 的模型。
+
+## 概述
+
+Cursor 是一款 AI 代码编辑器。它允许用自己的 API 密钥和自定义 OpenAI 地址调用模型，小熊API 通过 [OpenAI 格式](/docs/openai/) 接入。接入前请注意以下限制：
+
+- **只对聊天和 Agent 生效** — Tab 补全和 Cursor 自带的模型不经过小熊API，仍由 Cursor 计费。
+- **请求经 Cursor 的服务器转发** — 由 Cursor 的服务器连接小熊API，能否连上主要取决于 Cursor，与你本机的网络和所选线路关系不大。
+- **影响所有 OpenAI 系列模型** — 开启自定义地址后，所有 OpenAI 系列的模型都走这个地址。要用 Cursor 自带的 OpenAI 模型，先关闭自定义地址。
+
+## 前置条件
+
+- **小熊API 密钥** — 在控制台的 [API 密钥](/keys) 页创建。
+- **Cursor 付费版** — 免费版不能使用自己的 API 密钥。
+
+## 安装 Cursor
+
+从 [Cursor 官网](https://cursor.com) 下载并安装 Cursor，然后登录你的付费账号。
+
+## 配置 Cursor
+
+<Steps>
+
+1. **打开模型设置**
+
+   打开 **Cursor Settings** → **Models**。
+
+2. **填写地址和密钥**
+
+   | 项目 | 填写 |
+   | --- | --- |
+   | OpenAI API Key | 你的小熊API 密钥，以 `sk-` 开头 |
+   | Override OpenAI Base URL | `https://api.little-bear.app/v1` |
+
+   地址末尾不要加 `/`。填好后打开这两项旁边的开关。
+
+3. **添加模型**
+
+   在模型列表中添加自定义模型（**Custom Models**），填 `gpt-6.1-sol`。需要其他模型时再逐个添加，模型名以 [模型广场](/pricing) 为准。
+
+</Steps>
+
+## 验证
+
+打开聊天面板，在模型选择中选 `gpt-6.1-sol`，发送一句话，能正常回复即接入成功。Cursor 没有单独的验证按钮，以实际对话为准。
+
+## 常见问题
+
+| 现象 | 原因 | 解决办法 |
+| --- | --- | --- |
+| 提示需要升级套餐 | 免费版不支持自己的密钥 | 升级 Cursor 付费版，或改用 [Cline](/docs/tools/cline/) |
+| `Invalid token` | 密钥错误或已失效 | 详见 [错误码](/docs/errors/) |
+| `No available channel for model` | 添加的模型名写错了 | 删除后按模型广场中的名字重新添加 |
+| 一直连不上，或请求很慢 | Cursor 默认的 HTTP/2 连接在部分网络下不稳定 | 在 **Cursor Settings** → **Network** 中把 **HTTP Compatibility Mode** 改为 **HTTP/1.1** |
+| Agent 模式中修改文件、调用工具出错 | Cursor 的 Agent 对自定义地址的兼容性还不稳定 | 先用聊天模式；需要稳定的编程助手可以用 [Codex](/docs/tools/codex/) 或 [Cline](/docs/tools/cline/) |
+
+Cursor 的设置界面经常调整，名称可能与上文不同，以 [Cursor 官方说明](https://cursor.com/help/models-and-usage/api-keys) 为准。
+
+## 下一步
+
+- [Cline](/docs/tools/cline/) — 在 VS Code 中使用小熊API
+- [Codex](/docs/tools/codex/) — 在终端中用 GPT 模型写代码
+- [可用模型](/docs/models/) — 选择适合写代码的模型

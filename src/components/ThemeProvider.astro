@@ -1,0 +1,30 @@
+---
+// Replaces Starlight's ThemeProvider. The docs share the console's theme
+// setting (localStorage `newapi:theme:v1:mode`: light, dark, or follow the
+// system), so going between the two never changes colour. A choice made
+// here before the docs shared it moves over once. Inline, so the page is
+// painted in the right theme from the first frame. The same rules, tested,
+// are storedTheme() in src/lib/site-bar/state.ts.
+---
+
+<script is:inline>
+  ;(() => {
+    let theme = null
+    try {
+      const main = localStorage.getItem('newapi:theme:v1:mode')
+      const legacy = localStorage.getItem('starlight-theme')
+      if (main === 'light' || main === 'dark') theme = main
+      else if (main === null && (legacy === 'light' || legacy === 'dark')) {
+        theme = legacy
+        localStorage.setItem('newapi:theme:v1:mode', legacy)
+      }
+      if (legacy !== null) localStorage.removeItem('starlight-theme')
+    } catch {
+      // storage blocked: follow the system
+    }
+    theme = theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+    document.documentElement.dataset.theme = theme
+    // Starlight's own theme select would call this; the site bar replaces it.
+    window.StarlightThemeProvider = { updatePickers() {} }
+  })()
+</script>

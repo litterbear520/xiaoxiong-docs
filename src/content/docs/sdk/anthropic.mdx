@@ -1,0 +1,272 @@
+---
+title: Anthropic SDK
+description: 用 Anthropic 官方 SDK 调用小熊API
+---
+
+import { TabItem, Tabs } from '@astrojs/starlight/components'
+
+Anthropic 官方 SDK 走 Claude 格式的 Messages 接口（`/v1/messages`），只需更换 Base URL 和密钥。它也能调用 GPT 和 Gemini 模型，只需更换 `model`。
+
+## 安装
+
+需要 Python 3.10 以上或 Node.js 22 以上。Node.js 示例在 TypeScript 项目里也能直接用。
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```bash
+pip install anthropic
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```bash
+npm install @anthropic-ai/sdk
+```
+
+</TabItem>
+</Tabs>
+
+## 配置
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+import os
+import anthropic
+
+client = anthropic.Anthropic(
+    base_url="https://api.little-bear.app",
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js
+import Anthropic from '@anthropic-ai/sdk'
+
+const client = new Anthropic({
+  baseURL: 'https://api.little-bear.app',
+  apiKey: process.env.XIAOXIONG_API_KEY,
+})
+```
+
+</TabItem>
+</Tabs>
+
+注意：Base URL 只填域名，**不带** `/v1`，SDK 会自动拼接 `/v1/messages`。
+
+### 环境变量
+
+SDK 会自动读取 `ANTHROPIC_BASE_URL` 和 `ANTHROPIC_API_KEY`。设置后，直接用 `anthropic.Anthropic()` 或 `new Anthropic()` 创建客户端：
+
+<Tabs syncKey="os">
+<TabItem label="macOS / Linux">
+
+```bash
+export ANTHROPIC_BASE_URL="https://api.little-bear.app"
+export ANTHROPIC_API_KEY="sk-你的密钥"
+```
+
+</TabItem>
+<TabItem label="Windows">
+
+```powershell
+$env:ANTHROPIC_BASE_URL="https://api.little-bear.app"
+$env:ANTHROPIC_API_KEY="sk-你的密钥"
+```
+
+</TabItem>
+</Tabs>
+
+## 示例
+
+示例中的 `client` 即 [配置](#配置) 中创建的客户端。思考和提示缓存的用法详见 [Claude 格式](/docs/claude/)。
+
+### 基础消息
+
+`max_tokens` 必填，是这次回答最多输出的 token 数。
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+message = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "用三句话讲清楚 HTTP 和 HTTPS 的区别。"}],
+)
+print(message.content[0].text)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js
+const message = await client.messages.create({
+  model: 'claude-sonnet-4-6',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: '用三句话讲清楚 HTTP 和 HTTPS 的区别。' }],
+})
+const first = message.content[0]
+console.log(first.type === 'text' ? first.text : '')
+```
+
+</TabItem>
+</Tabs>
+
+### 系统提示词
+
+```python
+message = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    system="你是一位资深后端工程师，先给结论，再给代码。",
+    messages=[{"role": "user", "content": "用 Python 写一个函数，判断字符串是不是回文。"}],
+)
+print(message.content[0].text)
+```
+
+### 流式响应
+
+用 `messages.stream`，SDK 会把事件拼成文字：
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+with client.messages.stream(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "从 1 数到 5"}],
+) as stream:
+    for text in stream.text_stream:
+        print(text, end="", flush=True)
+print()
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js
+const stream = client.messages.stream({
+  model: 'claude-sonnet-4-6',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: '从 1 数到 5' }],
+})
+stream.on('text', (text) => process.stdout.write(text))
+await stream.finalMessage()
+process.stdout.write('\n')
+```
+
+</TabItem>
+</Tabs>
+
+### 多轮对话
+
+```python
+message = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    messages=[
+        {"role": "user", "content": "我家的猫是橘色的，帮它起个名字。"},
+        {"role": "assistant", "content": "可以叫「橘子」。"},
+        {"role": "user", "content": "再来三个两个字的。"},
+    ],
+)
+print(message.content[0].text)
+```
+
+### 工具调用
+
+```python
+exchange_rate = {
+    "name": "get_exchange_rate",
+    "description": "查询两种货币之间的汇率。",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "base": {"type": "string", "description": "原币种代码，例如 USD"},
+            "quote": {"type": "string", "description": "目标币种代码，例如 CNY"},
+        },
+        "required": ["base", "quote"],
+    },
+}
+
+message = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    tools=[exchange_rate],
+    messages=[{"role": "user", "content": "100 美元现在能换多少人民币？"}],
+)
+calls = [b for b in message.content if b.type == "tool_use"]
+for call in calls:
+    print(call.name, call.input)  # 例如 get_exchange_rate {'base': 'USD', 'quote': 'CNY'}
+```
+
+### 异步用法（Python）
+
+```python
+import asyncio
+import os
+import anthropic
+
+client = anthropic.AsyncAnthropic(
+    base_url="https://api.little-bear.app",
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+)
+
+
+async def main():
+    message = await client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": "你好"}],
+    )
+    print(message.content[0].text)
+
+
+asyncio.run(main())
+```
+
+## 错误处理
+
+```python
+import anthropic
+
+try:
+    message = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": "你好"}],
+    )
+except anthropic.APIConnectionError:
+    print("网络不通，换一条线路再试。")
+except anthropic.AuthenticationError:
+    print("密钥无效，请检查密钥。")
+except anthropic.RateLimitError:
+    print("请求太频繁或上游繁忙，请稍后重试。")
+except anthropic.APIStatusError as e:
+    print(f"请求失败（{e.status_code}）：{e.message}")
+```
+
+常见报错：
+
+| 报错 | 原因 | 解决办法 |
+| --- | --- | --- |
+| `404`，地址里有 `/v1/v1/messages` | Base URL 多写了 `/v1` | 去掉 Base URL 末尾的 `/v1` |
+| `AuthenticationError`（401） | 密钥不对或已失效 | 详见 [认证](/docs/auth/#检查密钥) |
+| 调用 `messages.count_tokens` 返回 `404` | 小熊API 不提供 token 计数接口 | 不要调用它 |
+| `503` `No available channel for model …` | 模型名不对 | 用 [模型广场](/pricing) 里的名字 |
+
+重试和超时的写法详见 [错误处理](/docs/error-handling/)。
+
+## 下一步
+
+- [Claude 格式](/docs/claude/) — 思考、提示缓存和与官方接口的差异
+- [流式响应](/docs/streaming/) — 流式事件格式和用量
+- [错误处理](/docs/error-handling/) — 重试、超时和常见错误

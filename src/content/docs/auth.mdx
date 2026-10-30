@@ -1,0 +1,164 @@
+---
+title: 认证
+description: 创建 API 密钥，在请求中完成认证
+---
+
+import { TabItem, Tabs } from '@astrojs/starlight/components'
+
+所有 API 请求都需要用 API 密钥认证。三种接口格式用同一个密钥，只是放在不同的请求头里。
+
+## API 密钥
+
+密钥以 `sk-` 为前缀，在控制台的 [API 密钥](/keys) 页创建和管理。小熊API 只认自己的密钥，不需要 OpenAI、Anthropic 或 Google 的账号。
+
+## 创建 API 密钥
+
+打开 [API 密钥](/keys) 页，点击 **创建 API 密钥**。名称填一个你认得出的名字，其他选项保持默认即可。创建后复制以 `sk-` 开头的密钥。
+
+需要控制风险时，可以在创建或编辑密钥时设置以下选项：
+
+| 选项 | 作用 | 触发后的报错 |
+| --- | --- | --- |
+| 额度上限 | 限制这个密钥最多能花多少，其他密钥不受影响 | 剩余额度不够时 `403 token quota is not enough`，用完后 `401 Invalid token` |
+| 过期时间 | 到期后密钥失效 | `401 Invalid token` |
+| 模型限制 | 只允许调用指定的模型 | `403 This token has no access to model …` |
+| IP 白名单 | 只允许指定 IP 调用 | `403 Your IP address is not on this token's allowlist` |
+
+所有密钥共用账户余额，密钥本身没有余额。
+
+## 各接口格式的认证方式
+
+不同接口格式用不同的请求头，与各家官方 API 一致。示例从环境变量 `XIAOXIONG_API_KEY` 读取密钥，设置方法详见 [设置环境变量](#设置环境变量)。
+
+### OpenAI 格式
+
+在 `Authorization` 请求头中传入带 `Bearer` 前缀的密钥，`Bearer` 和密钥之间有一个空格：
+
+```bash
+curl https://api.little-bear.app/v1/chat/completions \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-6-luna", "messages": [{"role": "user", "content": "你好"}]}'
+```
+
+### Claude 格式
+
+在 `x-api-key` 请求头中传入密钥，也可以用 `Authorization: Bearer`：
+
+```bash
+curl https://api.little-bear.app/v1/messages \
+  -H "x-api-key: $XIAOXIONG_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "claude-sonnet-4-6", "max_tokens": 1024, "messages": [{"role": "user", "content": "你好"}]}'
+```
+
+### Gemini 格式
+
+在 `x-goog-api-key` 请求头中传入密钥，也可以用查询参数 `?key=` 或 `Authorization: Bearer`：
+
+```bash
+curl https://api.little-bear.app/v1beta/models/gemini-3-flash:generateContent \
+  -H "x-goog-api-key: $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"contents": [{"role": "user", "parts": [{"text": "你好"}]}]}'
+```
+
+## 汇总
+
+| 格式 | 认证头 | 备选方式 |
+| --- | --- | --- |
+| OpenAI | `Authorization: Bearer sk-…` | 无 |
+| Claude | `x-api-key: sk-…` | `Authorization: Bearer sk-…` |
+| Gemini | `x-goog-api-key: sk-…` | `?key=sk-…` 或 `Authorization: Bearer sk-…` |
+
+`Authorization: Bearer` 在所有接口上都能用。`x-api-key` 只在 Claude 格式的接口和模型列表（`/v1/models`）上有效，`x-goog-api-key` 和 `?key=` 只在 Gemini 格式的接口（`/v1beta/…`）上有效，用在 `/v1/chat/completions` 等其他接口上会返回 `401 Invalid token`。官方 SDK 会自动选择请求头，只需填对 Base URL 和密钥。
+
+## 检查密钥
+
+请求模型列表可以检查密钥是否可用，不消耗额度，返回模型列表即说明密钥有效：
+
+```bash
+curl https://api.little-bear.app/v1/models \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY"
+```
+
+返回 `401 Invalid token`（或 `无效的令牌`）表示没带密钥、放错了请求头、密钥抄错，或者密钥已过期、额度用完、被停用。排查步骤详见 [错误码](/docs/errors/)。
+
+## 设置环境变量
+
+把密钥存在环境变量 `XIAOXIONG_API_KEY` 中，代码和命令从这里读取，不用把密钥写进源码。
+
+### 临时设置
+
+只对当前终端窗口有效，关闭窗口后要重新设置：
+
+<Tabs syncKey="os">
+<TabItem label="macOS / Linux">
+
+```bash
+export XIAOXIONG_API_KEY="sk-你的密钥"
+```
+
+</TabItem>
+<TabItem label="Windows">
+
+```powershell
+$env:XIAOXIONG_API_KEY="sk-你的密钥"
+```
+
+</TabItem>
+</Tabs>
+
+### 永久设置
+
+<Tabs syncKey="os">
+<TabItem label="macOS / Linux">
+
+写进 shell 的配置文件，之后打开的终端都会自动设置。macOS 默认用 zsh：
+
+```bash
+echo 'export XIAOXIONG_API_KEY="sk-你的密钥"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+用 bash 的话，把 `~/.zshrc` 换成 `~/.bashrc`。
+
+</TabItem>
+<TabItem label="Windows">
+
+```powershell
+setx XIAOXIONG_API_KEY "sk-你的密钥"
+```
+
+`setx` 只对之后打开的终端生效，执行后关闭当前终端，再打开一个新的。
+
+</TabItem>
+</Tabs>
+
+从桌面图标打开的软件读不到终端里设置的变量，请在软件自己的设置里填写密钥。
+
+### Windows PowerShell
+
+PowerShell 的换行和引号规则与 bash 不同，直接粘贴文档里的 cURL 命令会报错。在 PowerShell 里用 `Invoke-RestMethod`：
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "https://api.little-bear.app/v1/chat/completions" `
+  -Headers @{ Authorization = "Bearer $env:XIAOXIONG_API_KEY" } `
+  -ContentType "application/json" `
+  -Body '{"model": "gpt-6-luna", "messages": [{"role": "user", "content": "Hello"}]}'
+```
+
+## 安全建议
+
+- **只在服务端使用** — 不要把密钥写进网页前端、App 安装包或提交到代码仓库。别人拿到密钥，就能用你的余额
+- **使用环境变量** — 从 `XIAOXIONG_API_KEY` 读取密钥，不要写进源码
+- **一个用途一个密钥** — 每个工具、每台电脑或每个项目建一个密钥，出问题时只停用那一个
+- **设置额度上限和过期时间** — 给共享或临时用的密钥设上限，控制意外消费
+- **泄露后立即更换** — 在 [API 密钥](/keys) 页停用或删除它，再建一个新的。删除后，用旧密钥的请求会立即返回 `Invalid token`
+
+## 下一步
+
+- [快速开始](/docs/quickstart/) — 发送第一个请求
+- [线路选择](/docs/lines/) — 主线路连不上时切换线路
+- [错误码](/docs/errors/) — 按报错原文查原因

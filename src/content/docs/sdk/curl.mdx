@@ -1,0 +1,271 @@
+---
+title: cURL
+description: 用 cURL 直接调用三种接口格式
+---
+
+在终端里用 cURL 发请求，是确认密钥和线路能不能用的最快办法，什么都不用装。
+
+## 准备工作
+
+先把密钥放进环境变量，下面的命令都从这里读取：
+
+```bash
+export XIAOXIONG_API_KEY="sk-你的密钥"
+```
+
+本页命令是 bash 语法，适用于 macOS 和 Linux。Windows PowerShell 的写法详见 [认证](/docs/auth/#windows-powershell)。
+
+## OpenAI 格式
+
+### 基础请求
+
+```bash
+curl https://api.little-bear.app/v1/chat/completions \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-6-luna",
+    "messages": [{"role": "user", "content": "用一句话解释什么是 API。"}]
+  }'
+```
+
+用 Responses 接口时，把地址换成 `/v1/responses`，请求体用 `input`：
+
+```bash
+curl https://api.little-bear.app/v1/responses \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-6-luna", "input": "用一句话介绍你自己。"}'
+```
+
+### 流式响应
+
+加上 `"stream": true`。curl 默认会攒一批再输出，加 `-N`（`--no-buffer`）才能边收边打印。流的最后一行是 `data: [DONE]`：
+
+```bash
+curl -N https://api.little-bear.app/v1/chat/completions \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-6-luna",
+    "stream": true,
+    "messages": [{"role": "user", "content": "从 1 数到 5"}]
+  }'
+```
+
+### 系统指令
+
+```bash
+curl https://api.little-bear.app/v1/chat/completions \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-6-luna",
+    "messages": [
+      {"role": "system", "content": "回答控制在三条要点以内。"},
+      {"role": "user", "content": "Git 的 merge 和 rebase 有什么区别？"}
+    ]
+  }'
+```
+
+### 多轮对话
+
+```bash
+curl https://api.little-bear.app/v1/chat/completions \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-6-luna",
+    "messages": [
+      {"role": "user", "content": "记住这个数字：42。"},
+      {"role": "assistant", "content": "好的，我记住了。"},
+      {"role": "user", "content": "我刚才让你记的数字是多少？"}
+    ]
+  }'
+```
+
+## Claude 格式
+
+小熊API 不提供 token 计数接口，`/v1/messages/count_tokens` 返回 `404`。
+
+### 基础请求
+
+```bash
+curl https://api.little-bear.app/v1/messages \
+  -H "x-api-key: $XIAOXIONG_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-6",
+    "max_tokens": 1024,
+    "messages": [{"role": "user", "content": "举个生活里的例子，说明什么是缓存。"}]
+  }'
+```
+
+`max_tokens` 必填。
+
+### 流式响应
+
+```bash
+curl -N https://api.little-bear.app/v1/messages \
+  -H "x-api-key: $XIAOXIONG_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-6",
+    "max_tokens": 1024,
+    "stream": true,
+    "messages": [{"role": "user", "content": "从 1 数到 5"}]
+  }'
+```
+
+### 系统提示词
+
+```bash
+curl https://api.little-bear.app/v1/messages \
+  -H "x-api-key: $XIAOXIONG_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-6",
+    "max_tokens": 1024,
+    "system": "回答控制在三条要点以内。",
+    "messages": [{"role": "user", "content": "Git 的 merge 和 rebase 有什么区别？"}]
+  }'
+```
+
+## Gemini 格式
+
+### 基础请求
+
+```bash
+curl https://api.little-bear.app/v1beta/models/gemini-3-flash:generateContent \
+  -H "x-goog-api-key: $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contents": [{"role": "user", "parts": [{"text": "解释一下相对论。"}]}]
+  }'
+```
+
+### 流式响应
+
+把接口换成 `streamGenerateContent` 并加上 `alt=sse`。网址里有 `?`，要用引号包起来：
+
+```bash
+curl -N "https://api.little-bear.app/v1beta/models/gemini-3-flash:streamGenerateContent?alt=sse" \
+  -H "x-goog-api-key: $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contents": [{"role": "user", "parts": [{"text": "从 1 数到 5"}]}]
+  }'
+```
+
+### 多轮对话
+
+模型的回复用 `"role": "model"`：
+
+```bash
+curl https://api.little-bear.app/v1beta/models/gemini-3-flash:generateContent \
+  -H "x-goog-api-key: $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contents": [
+      {"role": "user", "parts": [{"text": "一打是几个？"}]},
+      {"role": "model", "parts": [{"text": "一打是 12 个。"}]},
+      {"role": "user", "parts": [{"text": "那三打呢？"}]}
+    ]
+  }'
+```
+
+### 系统指令
+
+```bash
+curl https://api.little-bear.app/v1beta/models/gemini-3-flash:generateContent \
+  -H "x-goog-api-key: $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "systemInstruction": {"parts": [{"text": "只用 Go 语言回答。"}]},
+    "contents": [{"role": "user", "parts": [{"text": "怎么读取一个文本文件的全部内容？"}]}]
+  }'
+```
+
+## 用 jq 解析响应
+
+[jq](https://jqlang.github.io/jq/) 能在命令行里从 JSON 中挑出字段。macOS 15 及以上自带 jq，Linux 上用 `sudo apt install jq` 安装。加 `-s` 让 curl 不打印进度。
+
+| 格式 | 取出回答 | 取出用量 |
+| --- | --- | --- |
+| OpenAI | `jq -r '.choices[0].message.content'` | `jq '.usage'` |
+| Claude | `jq -r '.content[] \| select(.type == "text") \| .text'` | `jq '.usage'` |
+| Gemini | `jq -r '.candidates[0].content.parts[] \| select(.thought != true) \| .text'` | `jq '.usageMetadata'` |
+
+Gemini 的 `parts` 第一段常常是一个空的思考块（`"thought": true`），所以不要直接取 `parts[0]`。完整示例：
+
+```bash
+curl -s https://api.little-bear.app/v1/chat/completions \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-6-luna", "messages": [{"role": "user", "content": "把「早上好」翻译成英语、日语和法语。"}]}' \
+  | jq -r '.choices[0].message.content'
+```
+
+## 实用技巧
+
+### 保存响应到文件
+
+```bash
+curl -s https://api.little-bear.app/v1/chat/completions \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-6-luna", "messages": [{"role": "user", "content": "列出一周的晚餐菜单，用 JSON 数组返回。"}]}' \
+  -o response.json
+```
+
+### 详细模式用于调试
+
+`-v` 会打印完整的请求头和响应头。密钥被拒、连不上线路时，先用它看看卡在哪一步：
+
+```bash
+curl -v https://api.little-bear.app/v1/models \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY"
+```
+
+### 从文件读取请求体
+
+请求体复杂时，可以把 JSON 存在文件里，用 `-d @文件名` 发送。这样也不用处理 shell 的引号转义：
+
+```bash
+cat > body.json << 'EOF'
+{
+  "model": "gpt-6-luna",
+  "messages": [
+    {"role": "system", "content": "你是一位旅行规划师。"},
+    {"role": "user", "content": "帮我安排一个三天两夜的杭州行程。"}
+  ]
+}
+EOF
+
+curl https://api.little-bear.app/v1/chat/completions \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d @body.json
+```
+
+### 设置超时
+
+用 `--max-time` 设置总超时，`--connect-timeout` 设置连接超时。思考时间长的模型可能要等很久才开始输出，总超时不要设得太短：
+
+```bash
+curl --max-time 300 --connect-timeout 10 \
+  https://api.little-bear.app/v1/chat/completions \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-6-luna", "messages": [{"role": "user", "content": "你好"}]}'
+```
+
+## 下一步
+
+- [OpenAI SDK](/docs/sdk/openai/) — 在 Python 和 Node.js 代码里调用
+- [Anthropic SDK](/docs/sdk/anthropic/) — 用官方 SDK 调用 Claude 格式
+- [流式响应](/docs/streaming/) — 了解流式事件格式
+- [认证](/docs/auth/) — 各格式的认证方式

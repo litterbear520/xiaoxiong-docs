@@ -1,0 +1,14 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro'
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '')
+---
+
+<StarlightPage frontmatter={{ title: '页面不存在', template: 'splash', pagefind: false }}>
+  <p>这个地址没有对应的文档页面，可能是链接写错了，或者页面已经改名。</p>
+  <ul>
+    <li><a href={`${base}/`}>回到文档首页</a></li>
+    <li><a href={`${base}/quickstart/`}>从快速开始看起</a></li>
+    <li><a href={`${base}/errors/`}>按报错查错误码</a></li>
+  </ul>
+</StarlightPage>

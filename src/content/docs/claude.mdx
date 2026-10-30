@@ -1,0 +1,175 @@
+---
+title: Claude 格式
+description: 用 Messages 接口调用 Claude 模型
+---
+
+import { TabItem, Tabs } from '@astrojs/starlight/components'
+
+小熊API 兼容 Anthropic 的 Messages 接口，参数和返回结构与 Anthropic 官方相同，[Anthropic SDK](/docs/sdk/anthropic/) 和 Claude Code 都用这个格式。这个格式也能调用 GPT 和 Gemini 模型，切换模型只需更改 `model` 参数。全部模型参阅 [可用模型](/docs/models/)。
+
+## 端点
+
+```text
+POST https://api.little-bear.app/v1/messages
+```
+
+Base URL 是 `https://api.little-bear.app`，不带 `/v1`，SDK 会自己补上。
+
+## 认证
+
+把 API 密钥放进 `x-api-key` 请求头，并带上 `anthropic-version`：
+
+```text
+x-api-key: sk-你的密钥
+anthropic-version: 2023-06-01
+```
+
+也可以用 `Authorization: Bearer sk-你的密钥`。其他写法详见 [认证](/docs/auth/)。
+
+## 请求示例
+
+示例从环境变量 `XIAOXIONG_API_KEY` 读取密钥，设置方法详见 [快速开始](/docs/quickstart/)。
+
+<Tabs syncKey="lang">
+<TabItem label="cURL">
+
+```bash
+curl https://api.little-bear.app/v1/messages \
+  -H "x-api-key: $XIAOXIONG_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-6",
+    "max_tokens": 1024,
+    "messages": [{"role": "user", "content": "你好"}]
+  }'
+```
+
+</TabItem>
+<TabItem label="Python">
+
+先安装 SDK：`pip install anthropic`。
+
+```python
+import os
+import anthropic
+
+client = anthropic.Anthropic(
+    base_url="https://api.little-bear.app",
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+)
+
+message = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "你好"}],
+)
+print(message.content[0].text)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+先安装 SDK：`npm install @anthropic-ai/sdk`。
+
+```js
+import Anthropic from '@anthropic-ai/sdk'
+
+const client = new Anthropic({
+  baseURL: 'https://api.little-bear.app',
+  apiKey: process.env.XIAOXIONG_API_KEY,
+})
+
+const message = await client.messages.create({
+  model: 'claude-sonnet-4-6',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: '你好' }],
+})
+console.log(message.content[0].text)
+```
+
+</TabItem>
+</Tabs>
+
+返回示例（省略了部分字段），回答在 `content` 里：
+
+```json
+{
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-4-6",
+  "content": [{ "type": "text", "text": "你好！很高兴见到你！有什么我可以帮助你的吗？" }],
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 10, "output_tokens": 31 }
+}
+```
+
+## 参数
+
+| 参数 | 是否生效 | 说明 |
+| --- | --- | --- |
+| `model` | 生效 | 只能用 [模型广场](/pricing) 里的名字 |
+| `max_tokens` | 生效 | 必填，这次回答最多输出的 token 数 |
+| `messages`、`system` | 生效 | 支持图片输入 |
+| `stream` | 生效 | 详见 [流式响应](#流式响应) |
+| `tools` | 生效 | 工具调用 |
+| `thinking` | 生效 | 默认关闭，详见 [思考](#思考) |
+| `cache_control` | 生效 | 详见 [提示缓存](#提示缓存) |
+| `stop_sequences` | 忽略 | 不会在停止词处截断 |
+
+## 流式响应
+
+在请求体里加 `"stream": true`，返回 SSE 事件流，事件类型与 Anthropic 官方相同，流以 `message_stop` 事件结束。用 SDK 时调用 `client.messages.stream(...)`。事件格式和代码示例详见 [流式响应](/docs/streaming/)。
+
+## 思考
+
+Claude 模型默认不思考，直接回答。在请求里加 `thinking` 参数，模型会先思考再回答：
+
+| 写法 | 效果 |
+| --- | --- |
+| `"thinking": {"type": "adaptive"}` | 模型自己决定思考多少，推荐 |
+| `"thinking": {"type": "enabled", "budget_tokens": 2048}` | 思考最多用 `budget_tokens` 个 token，至少 1024，且要小于 `max_tokens` |
+
+思考过程是 `content` 里 `type` 为 `thinking` 的块，排在回答前面。思考的 token 按输出价计费。
+
+## 提示缓存
+
+很长的系统提示或文档要反复发送时，在要缓存的内容块上加 `"cache_control": {"type": "ephemeral"}`。`client` 与 [请求示例](#请求示例) 相同：
+
+```python
+long_text = open("handbook.md", encoding="utf-8").read()
+
+message = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    system=[{"type": "text", "text": long_text, "cache_control": {"type": "ephemeral"}}],
+    messages=[{"role": "user", "content": "这份手册里怎么申请报销？"}],
+)
+print(message.usage)
+```
+
+- 之后开头相同的请求会命中缓存，命中的 token 数在 `usage.cache_read_input_tokens` 里，按缓存读取价计费，约为输入价的十分之一
+- 写入缓存不额外收费，第一次请求按普通输入价计费
+- 内容太短不会缓存：`claude-sonnet-4-6` 至少 1024 个 token，`claude-opus-4-6` 至少 4096 个 token
+
+## 与官方接口的差异
+
+- **计算 token 数** — 不支持 `/v1/messages/count_tokens`，返回 `404`
+- **`stop_sequences`** — 被忽略
+- **缓存写入** — 不额外收费
+- **模型名** — 只能用 [模型广场](/pricing) 里的名字
+
+用 OpenAI 格式调用 Claude 模型时：
+
+- `max_tokens` 生效，`stop` 被忽略
+- `reasoning_effort` 会打开思考，思考过程在返回的 `reasoning_content` 字段里
+- 设置 `response_format` 后，返回的 JSON 可能包在 ```` ```json ```` 代码块里，解析前先去掉代码块标记
+
+以上为 2026 年 10 月的实测结果，上游调整后可能变化，以实际返回为准。完整参数参阅 [Claude API 文档](https://platform.claude.com/docs/en/api/messages)。
+
+## 下一步
+
+- [Anthropic SDK](/docs/sdk/anthropic/) — Python 和 Node.js 的完整用法
+- [Claude Code](/docs/tools/claude-code/) — 在终端里用 Claude 模型写代码
+- [流式响应](/docs/streaming/) — 事件格式和用量读取
+- [错误码](/docs/errors/) — 按状态码和报错原文排查

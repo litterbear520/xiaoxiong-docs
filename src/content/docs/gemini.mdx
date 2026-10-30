@@ -1,0 +1,167 @@
+---
+title: Gemini 格式
+description: 用 generateContent 接口调用 Gemini 模型
+---
+
+import { TabItem, Tabs } from '@astrojs/starlight/components'
+
+小熊API 兼容 Google 的 Gemini API（generateContent），参数和返回结构与 Google 官方相同，[Google GenAI SDK](/docs/sdk/google-genai/) 和 Gemini CLI 都用这个格式。这个格式也能调用 GPT 和 Claude 模型，切换模型只需更改模型名。全部模型参阅 [可用模型](/docs/models/)。
+
+## 端点
+
+```text
+POST https://api.little-bear.app/v1beta/models/{model}:generateContent
+POST https://api.little-bear.app/v1beta/models/{model}:streamGenerateContent?alt=sse
+GET  https://api.little-bear.app/v1beta/models
+```
+
+`:generateContent` 一次性返回，`:streamGenerateContent?alt=sse` 以 SSE 增量返回。`GET /v1beta/models` 列出小熊API 的全部模型，包括 GPT 和 Claude 模型。Base URL 是 `https://api.little-bear.app`，不带 `/v1beta`，SDK 会自己补上。
+
+## 认证
+
+把 API 密钥放进 `x-goog-api-key` 请求头：
+
+```text
+x-goog-api-key: sk-你的密钥
+```
+
+也可以用查询参数 `?key=sk-你的密钥`，或请求头 `Authorization: Bearer sk-你的密钥`。其他写法详见 [认证](/docs/auth/)。
+
+## 请求示例
+
+示例从环境变量 `XIAOXIONG_API_KEY` 读取密钥，设置方法详见 [快速开始](/docs/quickstart/)。
+
+<Tabs syncKey="lang">
+<TabItem label="cURL">
+
+```bash
+curl https://api.little-bear.app/v1beta/models/gemini-3-flash:generateContent \
+  -H "x-goog-api-key: $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contents": [{"role": "user", "parts": [{"text": "你好"}]}]
+  }'
+```
+
+</TabItem>
+<TabItem label="Python">
+
+先安装 SDK：`pip install google-genai`。
+
+```python
+import os
+from google import genai
+from google.genai import types
+
+client = genai.Client(
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+    http_options=types.HttpOptions(base_url="https://api.little-bear.app"),
+)
+
+response = client.models.generate_content(model="gemini-3-flash", contents="你好")
+print(response.text)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+先安装 SDK：`npm install @google/genai`。
+
+```js
+import { GoogleGenAI } from '@google/genai'
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.XIAOXIONG_API_KEY,
+  httpOptions: { baseUrl: 'https://api.little-bear.app' },
+})
+
+const response = await ai.models.generateContent({
+  model: 'gemini-3-flash',
+  contents: '你好',
+})
+console.log(response.text)
+```
+
+</TabItem>
+</Tabs>
+
+返回示例（省略了部分字段）：
+
+```json
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          { "thought": true, "text": "" },
+          { "text": "你好！有什么我可以帮你的吗？" }
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ],
+  "usageMetadata": { "promptTokenCount": 2, "candidatesTokenCount": 8, "totalTokenCount": 10 }
+}
+```
+
+`parts` 的第一段常常是一个空的思考块（`"thought": true`），回答在后面不带 `thought` 的那一段。直接解析 JSON 时不要只取 `parts[0]`；用 SDK 时读 `response.text`，它只包含回答。
+
+## 参数
+
+| 参数 | 是否生效 | 说明 |
+| --- | --- | --- |
+| `contents` | 生效 | 支持图片输入（`inlineData`） |
+| `tools` | 生效 | 工具调用（`functionDeclarations`） |
+| `generationConfig.thinkingConfig` | 生效 | 详见 [思考](#思考) |
+| `generationConfig.stopSequences` | 生效 | 在停止词处截断 |
+| `generationConfig.imageConfig` | 部分生效 | 只有 `gemini-3.1-flash-image` 支持，详见 [图片生成](/docs/images/#gemini-图片模型) |
+| `generationConfig.maxOutputTokens` | 忽略 | 不能限制输出长度，想要短回答就在提示词里说明 |
+
+## 流式响应
+
+把端点换成 `:streamGenerateContent?alt=sse`，返回 SSE 流，每行 `data: ` 后面是一段 JSON，最后一块带 `finishReason`。用 cURL 时网址里有 `?`，要用引号包起来。用 SDK 时调用 `generate_content_stream`（Python）或 `generateContentStream`（Node.js）。详见 [流式响应](/docs/streaming/)。
+
+## 思考
+
+实测 `gemini-3.8-flash` 默认先思考再回答，其他 Gemini 模型默认不思考。思考的 token 数在 `usageMetadata.thoughtsTokenCount` 里，按输出价计费。用 `generationConfig.thinkingConfig` 控制思考：
+
+| 参数 | 效果 |
+| --- | --- |
+| `"thinkingLevel": "low"` | 少思考，简单问题通常直接回答 |
+| `"thinkingLevel": "high"` | 多思考，回答更慢 |
+| `"includeThoughts": true` | 返回思考摘要，即 `parts` 里带 `"thought": true` 的那一段 |
+
+```python
+response = client.models.generate_content(
+    model="gemini-3.8-flash",
+    contents="一个农夫有 17 只羊，除了 9 只以外都死了，还剩几只？",
+    config=types.GenerateContentConfig(
+        thinking_config=types.ThinkingConfig(thinking_level="low"),
+    ),
+)
+print(response.text)
+```
+
+用 OpenAI 格式调用时不能控制思考，实测 `reasoning_effort` 不会减少思考的 token。
+
+## 与官方接口的差异
+
+- **`maxOutputTokens`** — 被忽略
+- **计算 token 数** — 不支持 `countTokens`，返回 `404`
+- **Interactions 接口** — 不支持 `/v1beta/interactions`，返回 `404`；Google 新文档里的 Interactions 示例要改成 `generateContent`
+- **模型列表** — `GET /v1beta/models` 也列出 GPT 和 Claude 模型
+
+用 OpenAI 格式调用 Gemini 模型时：
+
+- `max_tokens` 被忽略，`stop` 生效
+- 设置 `response_format` 后，返回的 JSON 可能包在 ```` ```json ```` 代码块里，解析前先去掉代码块标记
+
+以上为 2026 年 10 月的实测结果，上游调整后可能变化，以实际返回为准。完整参数参阅 [Gemini API 参考](https://ai.google.dev/api/generate-content)。
+
+## 下一步
+
+- [Google GenAI SDK](/docs/sdk/google-genai/) — Python 和 Node.js 的完整用法
+- [Gemini CLI](/docs/tools/gemini-cli/) — 在终端里用 Gemini 模型写代码
+- [图片生成](/docs/images/#gemini-图片模型) — 用 `gemini-3.1-flash-image` 生成和编辑图片
+- [错误码](/docs/errors/) — 按状态码和报错原文排查

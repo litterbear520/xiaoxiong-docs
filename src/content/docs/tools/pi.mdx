@@ -1,0 +1,179 @@
+---
+title: Pi
+description: 让 Pi 通过小熊API 使用 GPT 和 Claude 模型
+---
+
+import { Aside, Steps, TabItem, Tabs } from '@astrojs/starlight/components'
+
+配置 Pi 使用小熊API。只需要一个环境变量和一个模型配置文件。
+
+## 概述
+
+[Pi](https://pi.dev) 是一款开源的终端编程助手，可以读写项目文件、执行命令。通过小熊API，GPT 模型走 [OpenAI 格式](/docs/openai/)（Responses 接口），Claude 模型走 [Claude 格式](/docs/claude/)，两者使用同一个密钥。本页配置以 Pi 1.4 为准。
+
+## 前置条件
+
+- **小熊API 密钥** — 在控制台的 [API 密钥](/keys) 页创建。
+- **Node.js 22.19 以上** — 用 npm 安装时需要。
+- **[Git for Windows](https://git-scm.com/downloads/win)**（仅 Windows）— Pi 用它自带的 Bash 执行命令。
+
+## 安装 Pi
+
+<Tabs syncKey="os">
+<TabItem label="macOS / Linux">
+
+```bash
+curl -fsSL https://pi.dev/install.sh | sh
+```
+
+</TabItem>
+<TabItem label="Windows">
+
+```powershell
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+```
+
+</TabItem>
+</Tabs>
+
+macOS 和 Linux 也可以用 npm 安装，命令与 Windows 相同。安装后打开一个新终端，运行 `pi --version`，输出版本号即安装成功。
+
+## 配置 Pi
+
+<Steps>
+
+1. **把密钥存入环境变量**
+
+   <Tabs syncKey="os">
+   <TabItem label="macOS / Linux">
+
+   ```bash
+   echo 'export XIAOXIONG_API_KEY="sk-你的密钥"' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+   使用 bash 时，把 `~/.zshrc` 换成 `~/.bashrc`。
+
+   </TabItem>
+   <TabItem label="Windows">
+
+   ```powershell
+   setx XIAOXIONG_API_KEY "sk-你的密钥"
+   ```
+
+   执行后关闭终端，之后的步骤在新终端中进行。
+
+   </TabItem>
+   </Tabs>
+
+2. **编辑模型配置文件**
+
+   打开 Pi 的模型配置文件，没有就新建一个：
+
+   | 系统 | 路径 |
+   | --- | --- |
+   | macOS / Linux | `~/.pi/agent/models.json` |
+   | Windows | `%USERPROFILE%\.pi\agent\models.json` |
+
+   写入下面的内容：
+
+   ```json title="models.json"
+   {
+     "$schema": "https://pi.dev/schemas/models.schema.json",
+     "providers": {
+       "xiaoxiong": {
+         "name": "小熊API",
+         "baseUrl": "https://api.little-bear.app/v1",
+         "api": "openai-responses",
+         "apiKey": "$XIAOXIONG_API_KEY",
+         "models": [
+           {
+             "id": "gpt-6.1-sol",
+             "reasoning": true,
+             "input": ["text", "image"],
+             "contextWindow": 272000
+           },
+           {
+             "id": "gpt-6-luna",
+             "reasoning": true,
+             "input": ["text", "image"],
+             "contextWindow": 272000
+           },
+           {
+             "id": "claude-sonnet-4-6",
+             "api": "anthropic-messages",
+             "baseUrl": "https://api.little-bear.app",
+             "reasoning": true,
+             "input": ["text", "image"],
+             "contextWindow": 200000,
+             "maxTokens": 32000
+           },
+           {
+             "id": "claude-opus-4-6",
+             "api": "anthropic-messages",
+             "baseUrl": "https://api.little-bear.app",
+             "reasoning": true,
+             "input": ["text", "image"],
+             "contextWindow": 200000,
+             "maxTokens": 32000
+           }
+         ]
+       }
+     }
+   }
+   ```
+
+   文件中原来就有 `providers` 的话，把 `"xiaoxiong": { … }` 这一段加进已有的 `providers`，不要写两个 `providers`。
+
+</Steps>
+
+<Aside type="caution" title="别把密钥直接写进配置文件">
+配置文件经常被备份或分享。用 `$XIAOXIONG_API_KEY` 从环境变量读取密钥，配置文件中就不会出现密钥。
+</Aside>
+
+### 配置项说明
+
+| 配置 | 含义 |
+| --- | --- |
+| `xiaoxiong` | 服务商 ID。在命令行中选择模型时写成 `xiaoxiong/模型名` |
+| `name` | 在 Pi 中显示的服务商名称 |
+| `baseUrl` | 小熊API 的地址。GPT 模型用 OpenAI 格式，地址带 `/v1`；Claude 模型在自己那一项中改成**不带** `/v1` 的地址 |
+| `api` | 接口格式。`openai-responses` 是 OpenAI 的 Responses 接口（Codex 用的也是它），`anthropic-messages` 是 Claude 格式 |
+| `apiKey` | `$XIAOXIONG_API_KEY` 表示从这个环境变量读取密钥 |
+| `models` | 在 Pi 中可选的模型。`id` 必须与 [模型广场](/pricing) 中的名字完全一致。要加别的模型（例如 `gpt-6-astra`），照着同一系列的那一项再写一项 |
+| `reasoning` | 模型会思考。Pi 默认的思考强度是 `medium`，在对话中用 `/thinking` 调整 |
+| `input` | 模型能读取的内容。写上 `image` 才能在 Pi 中发送图片 |
+| `contextWindow` | 上下文长度，单位是 token。对话接近这个长度时，Pi 会自动压缩之前的对话 |
+| `maxTokens` | 每次回答最多输出的 token 数。Claude 模型按它限制输出，GPT 模型会忽略它 |
+
+换线路时，把两个 `baseUrl` 的域名都改掉，详见 [线路选择](/docs/lines/)。
+
+## 验证
+
+```bash
+pi --list-models xiaoxiong
+pi --model xiaoxiong/gpt-6-luna -p "Reply with exactly: gateway-ok"
+```
+
+第一条命令列出上面的 4 个模型，说明 Pi 读到了配置文件和密钥；第二条打印出 `gateway-ok`，说明接入成功。把模型换成 `xiaoxiong/claude-sonnet-4-6` 再试一次，可以确认 Claude 模型也能用。
+
+日常使用时，进入项目目录运行 `pi`，输入 `/model` 并搜索 `xiaoxiong`，选中模型后按 `Ctrl+S` 存为默认模型。
+
+## 常见问题
+
+| 报错 | 原因 | 解决办法 |
+| --- | --- | --- |
+| `No models available. Use /login to log into a provider…` | Pi 读不到密钥，没有密钥的服务商不会显示模型 | macOS / Linux 运行 `echo $XIAOXIONG_API_KEY`，确认能打印出密钥；Windows 用 `setx` 后要重开终端 |
+| `Failed to parse models.json` | 配置文件的 JSON 格式不对 | 按报错中的行号和列号检查引号、逗号和括号 |
+| `401` 或 `Invalid token` | 密钥错误或已失效 | 详见 [错误码](/docs/errors/) |
+| `No available channel for model …` | 小熊API 没有这个模型 | 把 `id` 改成 [模型广场](/pricing) 中的名字，例如 `gpt-6.1-sol` |
+| Claude 模型报 `Invalid URL (POST /v1/v1/messages)` | Claude 那一项的 `baseUrl` 多写了 `/v1` | 改成 `https://api.little-bear.app` |
+| 让 Pi 生成图片，没有得到图片 | GPT 和 Claude 对话模型不生成图片 | 改用图片接口，详见 [图片生成](/docs/images/) |
+
+Pi 的完整配置说明请参阅官方的 [模型配置文档](https://pi.dev/docs/latest/models)。
+
+## 下一步
+
+- [OpenAI 格式](/docs/openai/) — GPT 模型使用的 Responses 接口
+- [Claude 格式](/docs/claude/) — Claude 模型使用的接口格式
+- [可用模型](/docs/models/) — 选择适合写代码的模型

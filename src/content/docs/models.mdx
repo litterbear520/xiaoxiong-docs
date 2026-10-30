@@ -1,0 +1,77 @@
+---
+title: 可用模型
+description: 查看当前模型、接口格式和选型建议
+---
+
+小熊API 用同一个 API 密钥提供多家厂商的对话模型和图片模型。本页介绍当前有哪些模型、各用哪种接口格式，以及如何选择。完整的实时列表和价格以 [模型广场](/pricing) 为准。
+
+## 当前模型
+
+| 厂商 | 示例模型 | 可用的接口格式 |
+| --- | --- | --- |
+| OpenAI | `gpt-6-luna`、`gpt-6.1-sol`、`gpt-6-astra` | OpenAI |
+| Anthropic | `claude-sonnet-4-6`、`claude-opus-4-6`、`claude-opus-5-5` | Claude、OpenAI |
+| Google | `gemini-3.8-flash`、`gemini-3-flash`、`gemini-3.5-flash-lite` | Gemini、OpenAI |
+| DeepSeek | `deepseek-3.2` | Claude、OpenAI |
+| Moonshot | `kimi-k3` | Claude、OpenAI |
+| 阿里巴巴 | `qwen3-coder-next` | Claude、OpenAI |
+| 智谱 | `glm-5` | Claude、OpenAI |
+| MiniMax | `minimax-m2.5`、`minimax-m2.1` | Claude、OpenAI |
+| OpenAI 图片 | `gpt-image-2.5-sunburst`、`gpt-image-2.5-flare`、`gpt-image-2` | 只能用图片接口 |
+| Google 图片 | `gemini-3.1-flash-image` | Gemini、OpenAI 对话接口，不能用图片接口 |
+
+对话模型的格式取自模型广场。小熊API 会在格式之间转换请求和返回，所以对话模型也能用其他格式调用，例如用 Claude 格式调用 `gpt-6-luna`。图片模型的用法详见 [图片生成](/docs/images/)。
+
+- GPT 对话模型的上下文长度为 27.2 万 token。
+- GPT、Claude 和 Gemini 对话模型都能读取图片。
+
+## 接口格式说明
+
+| 格式 | 端点 | 适用场景 |
+| --- | --- | --- |
+| [OpenAI](/docs/openai/) | `POST /v1/chat/completions`、`POST /v1/responses` | 大多数工具和 SDK；Codex 只支持 Responses。没有特殊需求时用它 |
+| [Claude](/docs/claude/) | `POST /v1/messages` | Claude Code、Anthropic SDK；需要 Claude 的思考过程或提示缓存时 |
+| [Gemini](/docs/gemini/) | `POST /v1beta/models/模型名:generateContent` | Gemini CLI、Google GenAI SDK；需要设置 Gemini 思考级别或图片比例、分辨率时 |
+| [图片](/docs/images/) | `POST /v1/images/generations`、`POST /v1/images/edits` | gpt-image 模型生成和编辑图片 |
+
+工具或 SDK 只支持一种格式时，用它支持的格式即可。
+
+## 查找模型
+
+### 在模型广场
+
+控制台的 [模型广场](/pricing) 列出全部可用模型、价格和支持的接口格式。
+
+### 通过 API
+
+`GET /v1/models` 列出可用模型，需要带密钥：
+
+```bash
+curl https://api.little-bear.app/v1/models \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY"
+```
+
+装了 `jq` 的话，在命令末尾加 `| jq -r '.data[].id'` 只列出模型名。Gemini 格式的 `GET /v1beta/models` 同样列出全部模型。
+
+## 选择模型
+
+| 用途 | 推荐模型 | 说明 |
+| --- | --- | --- |
+| 日常聊天、翻译、总结 | `gpt-6-luna` | 速度快，价格低。不确定选哪个时用它 |
+| 写代码、日常工作 | `gpt-6.1-sol` 或 `claude-sonnet-4-6` | Codex 推荐 `gpt-6.1-sol`，Claude Code 推荐 `claude-sonnet-4-6` |
+| 最难的问题 | `gpt-6-astra` 或 `claude-opus-4-6` | 能力强，价格也高 |
+| 用 Gemini CLI 写代码 | `gemini-3.8-flash` | 能力最强的 Gemini 模型，详见 [Gemini CLI](/docs/tools/gemini-cli/) |
+| 生成和编辑图片 | `gpt-image-2.5-sunburst` | 用图片接口调用，详见 [图片生成](/docs/images/) |
+| 在对话中生成图片，或指定图片比例 | `gemini-3.1-flash-image` | 用对话接口或 Gemini 格式调用，详见 [图片生成](/docs/images/) |
+
+上一代 GPT 模型 `gpt-6-sol`、`gpt-5.6-sol`、`gpt-5.6-terra` 和 `gpt-5.6-luna` 通常不需要选。几个 Gemini 模型的区别详见 [Gemini 格式](/docs/gemini/)。
+
+## 模型命名
+
+请求里的 `model` 必须和模型广场中的名字完全一致，包括大小写和中间的点。官方旧名字（如 `gpt-4o`、`claude-3-5-sonnet`）或工具自带的默认模型名会返回 `503 No available channel for model …`，详见 [错误码](/docs/errors/)。
+
+## 下一步
+
+- [计费与充值](/docs/billing/) — 了解计费方式并充值
+- [快速开始](/docs/quickstart/) — 发送第一个请求
+- [图片生成](/docs/images/) — 用 gpt-image 和 Gemini 图片模型生成图片

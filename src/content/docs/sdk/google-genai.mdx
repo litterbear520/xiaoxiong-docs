@@ -1,0 +1,186 @@
+---
+title: Google GenAI SDK
+description: 用 Google GenAI SDK 调用小熊API
+---
+
+import { TabItem, Tabs } from '@astrojs/starlight/components'
+
+Google GenAI SDK 走 Gemini 格式的 `generateContent` 接口，只需更换 Base URL 和密钥，不需要 Google 账号。它也能调用 GPT 和 Claude 模型，只需更换 `model`。
+
+## 安装
+
+需要 Python 3.10 以上或 Node.js 22 以上。
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```bash
+pip install google-genai
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```bash
+npm install @google/genai
+```
+
+</TabItem>
+</Tabs>
+
+## 配置
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+import os
+from google import genai
+from google.genai import types
+
+client = genai.Client(
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+    http_options=types.HttpOptions(base_url="https://api.little-bear.app"),
+)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js
+import { GoogleGenAI } from '@google/genai'
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.XIAOXIONG_API_KEY,
+  httpOptions: { baseUrl: 'https://api.little-bear.app' },
+})
+```
+
+</TabItem>
+</Tabs>
+
+注意：Base URL 只填域名，**不带** `/v1beta`，后面的路径由 SDK 补全。Base URL 要在创建客户端时用 `http_options`（Node.js 里是 `httpOptions`）传入。
+
+## 示例
+
+示例中的 `client`（Node.js 里是 `ai`）和 `types` 即 [配置](#配置) 中创建和导入的对象。思考级别的用法详见 [Gemini 格式](/docs/gemini/)。
+
+### 基础生成
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+response = client.models.generate_content(
+    model="gemini-3-flash",
+    contents="用三句话讲清楚 HTTP 和 HTTPS 的区别。",
+)
+print(response.text)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js
+const response = await ai.models.generateContent({
+  model: 'gemini-3-flash',
+  contents: '用三句话讲清楚 HTTP 和 HTTPS 的区别。',
+})
+console.log(response.text)
+```
+
+</TabItem>
+</Tabs>
+
+`response.text` 只包含回答，不包含思考块。
+
+### 流式响应
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+stream = client.models.generate_content_stream(
+    model="gemini-3-flash",
+    contents="从 1 数到 5",
+)
+for chunk in stream:
+    print(chunk.text or "", end="", flush=True)
+print()
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js
+const stream = await ai.models.generateContentStream({ model: 'gemini-3-flash', contents: '从 1 数到 5' })
+for await (const chunk of stream) {
+  process.stdout.write(chunk.text ?? '')
+}
+process.stdout.write('\n')
+```
+
+</TabItem>
+</Tabs>
+
+有的块没有文字，`text` 为空，所以要写 `or ""` 或 `?? ''`。
+
+### 多轮对话
+
+模型的回复用 `role="model"`：
+
+```python
+response = client.models.generate_content(
+    model="gemini-3-flash",
+    contents=[
+        types.Content(role="user", parts=[types.Part(text="我家的猫是橘色的，帮它起个名字。")]),
+        types.Content(role="model", parts=[types.Part(text="可以叫「橘子」。")]),
+        types.Content(role="user", parts=[types.Part(text="再来三个两个字的。")]),
+    ],
+)
+print(response.text)
+```
+
+### 系统指令
+
+```python
+response = client.models.generate_content(
+    model="gemini-3-flash",
+    contents="用 Python 写一个函数，判断字符串是不是回文。",
+    config=types.GenerateContentConfig(
+        system_instruction="你是一位资深后端工程师，先给结论，再给代码。",
+    ),
+)
+print(response.text)
+```
+
+## 错误处理
+
+```python
+from google.genai import errors
+
+try:
+    response = client.models.generate_content(model="gemini-3-flash", contents="你好")
+    print(response.text)
+except errors.ClientError as e:
+    print(f"请求错误 {e.code}: {e.message}")
+except errors.ServerError as e:
+    print(f"服务器错误 {e.code}: {e.message}")
+```
+
+常见报错：
+
+| 报错 | 原因 | 解决办法 |
+| --- | --- | --- |
+| `404`，地址里有 `/v1beta/v1beta` | Base URL 多写了 `/v1beta` | 去掉 Base URL 末尾的 `/v1beta` |
+| `401` | 密钥不对或已失效 | 详见 [认证](/docs/auth/#检查密钥) |
+| 调用 `count_tokens`、`countTokens` 或 Interactions 接口返回 `404` | 小熊API 不提供这些接口 | 改用 `generate_content`（Node.js 里是 `generateContent`） |
+| `503` `No available channel for model …` | 模型名不对 | 用 [模型广场](/pricing) 里的名字 |
+
+重试和超时的写法详见 [错误处理](/docs/error-handling/)。
+
+## 下一步
+
+- [Gemini 格式](/docs/gemini/) — 思考级别和与官方接口的差异
+- [流式响应](/docs/streaming/) — 流式事件格式和用量
+- [图片生成](/docs/images/) — 用 `gemini-3.1-flash-image` 生成和编辑图片

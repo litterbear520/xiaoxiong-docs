@@ -1,0 +1,86 @@
+---
+title: 错误码
+description: 按状态码和报错原文查原因和处理方法
+---
+
+请求失败时，小熊API 返回 HTTP 状态码和一段 JSON。按报错原文在 [错误码](#错误码) 表里查原因；重试和超时的写法详见 [错误处理](/docs/error-handling/)。
+
+## 错误格式
+
+```json
+{
+  "error": {
+    "code": "model_not_found",
+    "message": "No available channel for model gpt-4o under group default (distributor) (request id: 20261018120000123456789…)",
+    "type": "new_api_error"
+  }
+}
+```
+
+| 字段 | 说明 |
+| --- | --- |
+| `error.message` | 报错原文，下表按它的开头列出 |
+| `error.code` | 错误代码 |
+| `error.type` | 错误类型 |
+
+`message` 末尾括号里的 `request id` 是这次请求的编号，联系小熊排查时请一起提供。
+
+## 错误码
+
+| 状态码 | 错误信息 | 原因 | 处理方法 |
+| --- | --- | --- | --- |
+| 400 | `Invalid request: invalid JSON request body` | 请求体不是合法的 JSON | 检查引号、逗号和括号；PowerShell 的写法详见 [认证](/docs/auth/#windows-powershell) |
+| 400 | 上游的内容审核提示，内容不固定 | 提示词或图片违反模型厂商的使用政策 | 修改提示词或图片，被拒绝的请求不扣费 |
+| 401 | `Invalid token` 或 `无效的令牌` | 密钥没传、抄错、放错请求头，或已过期、额度用完、被停用 | 详见 [Invalid token](#invalid-token) |
+| 403 | `This token has no access to model …` | 这个密钥设置了模型限制 | 换模型，或在 [API 密钥](/keys) 页修改模型限制 |
+| 403 | `Your IP address is not on this token's allowlist` | 当前 IP 不在这个密钥的 IP 白名单里 | 在 [API 密钥](/keys) 页修改白名单，或去掉限制 |
+| 403 | `Insufficient user quota` 或 `用户额度不足` | 账户余额不足 | 到 [钱包](/wallet) 充值，重试不会自行恢复 |
+| 403 | `Not enough quota to pre-consume` 或 `预扣费额度失败` | 余额不够冻结这次请求的预估费用（按输入长度估算） | 充值，或缩短输入，比如开一个新对话 |
+| 403 | `token quota is not enough` | 这个密钥的剩余额度不够这次请求 | 在 [API 密钥](/keys) 页调高额度上限，或换一个密钥 |
+| 404 | `Invalid URL (POST /v1/v1/chat/completions)` | 地址里多写了一个 `/v1` | 工具会自己拼 `/v1` 时，Base URL 只填 `https://api.little-bear.app` |
+| 404 | `Invalid URL (POST /v1/messages/count_tokens)` 或 `Invalid URL (POST /v1beta/models/…:countTokens)` | 小熊API 不提供计算 token 数的接口 | 不影响对话；工具里有相关选项就关掉 |
+| 429 | 上游的限流提示，内容不固定 | 请求太频繁，或上游暂时繁忙 | 等几秒再试，持续出现就联系小熊 |
+| 500 | `not supported model for image generation, only imagen models are supported` | 用图片接口调用了 `gemini-3.1-flash-image` | 改用对话接口或 Gemini 格式，详见 [图片生成](/docs/images/#gemini-图片模型) |
+| 503 | `No available channel for model …` | 模型名写错，或模型暂时下线 | 详见 [模型不存在](#模型不存在) |
+| 503 | `model … is only supported on /v1/images/generations and /v1/images/edits` | 用对话接口调用了 gpt-image 模型 | 改用图片接口，详见 [图片生成](/docs/images/) |
+| 524 | HTML 超时页面，不是 JSON | 非流式请求超过 100 秒没有返回 | 打开流式输出，详见 [线路选择](/docs/lines/) |
+| 5xx | 其他 | 服务器或上游出错 | 稍后重试，持续出现就把 `request id` 发给小熊 |
+
+## 常见错误
+
+### Invalid token
+
+`401 Invalid token` 只说明密钥没通过检查，不说明具体原因。按顺序排查：
+
+1. **密钥没传到** — 用 curl 测试时先运行 `echo $XIAOXIONG_API_KEY`，确认环境变量不为空；在工具里确认密钥填在了 **API 密钥** 一栏
+2. **密钥抄错** — 前后多了空格、少复制了几位，或原样粘贴了 `sk-你的密钥` 这类占位符。到 [API 密钥](/keys) 页重新复制
+3. **请求头放错** — `x-api-key` 和 `x-goog-api-key` 只在 Claude 和 Gemini 格式的接口上有效，OpenAI 格式要用 `Authorization: Bearer`，详见 [认证](/docs/auth/)
+4. **密钥失效** — 在 [API 密钥](/keys) 页查看状态，过期、额度用完、被停用都会报这个错
+
+密钥前面的 `sk-` 有没有都可以，不是报错的原因。
+
+### 模型不存在
+
+`503 No available channel for model xxx` 表示小熊API 没有叫 `xxx` 的模型。常见原因：
+
+- 写成了官方旧名字，比如 `gpt-4o`、`gpt-4o-mini`
+- 大小写或符号不对，比如 `GPT-6-Luna`、`gpt-6.1sol`
+- 工具里的默认模型没改，很多工具装好后默认用自己的模型名
+
+到 [模型广场](/pricing) 复制准确的模型名，或请求模型列表：
+
+```bash
+curl https://api.little-bear.app/v1/models \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY"
+```
+
+### 返回网页而不是 JSON
+
+返回的是 `<!doctype html>` 开头的网页时，说明请求打到了控制台网页上，没有进入接口。通常是地址少了 `/v1`，比如写成 `https://api.little-bear.app/chat/completions`；OpenAI 格式的完整地址是 `https://api.little-bear.app/v1/chat/completions`。
+
+## 下一步
+
+- [错误处理](/docs/error-handling/) — 哪些错误可以重试，以及超时和退避的写法
+- [认证](/docs/auth/) — 各接口格式的密钥写法
+- [线路选择](/docs/lines/) — 切换线路与 100 秒超时
+- [常见问题](/docs/faq/) — 使用中的其他问题

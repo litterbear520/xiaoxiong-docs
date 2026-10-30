@@ -1,0 +1,241 @@
+---
+// Sidebar: a search box, then groups that fold (only the
+// reader's current group starts open; the reader's own opening and closing is
+// kept across pages in the tab), drawn in Claude's style: bold group titles and
+// the current page on a grey pill. A nested group in the config (see
+// src/lib/sidebar.ts) is drawn as a small grey label over its pages instead of
+// another folding level.
+import { Icon } from '@astrojs/starlight/components'
+import SidebarPersister from '@astrojs/starlight/components/SidebarPersister.astro'
+import SidebarRestorePoint from '@astrojs/starlight/components/SidebarRestorePoint.astro'
+import type { StarlightRouteData } from '@astrojs/starlight/route-data'
+
+import { LABELS } from '../lib/site-bar/labels'
+import { siteLinks } from '../lib/site-bar/state'
+import SearchButton from './SearchButton.astro'
+
+type Entry = StarlightRouteData['sidebar'][number]
+type Link = Extract<Entry, { type: 'link' }>
+
+const { sidebar } = Astro.locals.starlightRoute
+// The site-wide links without 文档 (this sidebar is the docs), for screens
+// where the site bar has no room for them, as in the console's sidebar.
+const site = siteLinks(null, LABELS.zhCN).filter((link) => !link.current)
+
+const hasCurrent = (entry: Entry): boolean =>
+  entry.type === 'link' ? entry.isCurrent : entry.entries.some(hasCurrent)
+const linksIn = (entries: Entry[]): Link[] =>
+  entries.flatMap((entry) => (entry.type === 'link' ? [entry] : linksIn(entry.entries)))
+---
+
+<SearchButton />
+
+<SidebarPersister>
+  <ul class="groups">
+    {
+      sidebar.map((entry, groupIndex) => (
+        <li>
+          {entry.type === 'link' ? (
+            <a {...entry.attrs} class="top-link" href={entry.href} aria-current={entry.isCurrent ? 'page' : undefined}>
+              {entry.label}
+            </a>
+          ) : (
+            <details open={hasCurrent(entry) || !entry.collapsed}>
+              <summary>
+                <span>{entry.label}</span>
+                <Icon name="right-caret" class="caret" size="1rem" />
+              </summary>
+              <SidebarRestorePoint />
+              {/* The restored state may have closed the group holding this page,
+                  e.g. after a search jump; reopen it before the scroll position
+                  is restored at the end of SidebarPersister. */}
+              {hasCurrent(entry) && (
+                <script is:inline aria-hidden="true">
+                  document.currentScript.closest('details').open = true
+                </script>
+              )}
+              <ul class="items">
+                {entry.entries.map((child, subIndex) =>
+                  child.type === 'link' ? (
+                    <li>
+                      <a {...child.attrs} href={child.href} aria-current={child.isCurrent ? 'page' : undefined}>
+                        {child.label}
+                      </a>
+                    </li>
+                  ) : (
+                    <li class="sub">
+                      <span class="sub-label" id={`sidebar-sub-${groupIndex}-${subIndex}`}>
+                        {child.label}
+                      </span>
+                      <ul aria-labelledby={`sidebar-sub-${groupIndex}-${subIndex}`}>
+                        {linksIn(child.entries).map((link) => (
+                          <li>
+                            <a {...link.attrs} href={link.href} aria-current={link.isCurrent ? 'page' : undefined}>
+                              {link.label}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  )
+                )}
+              </ul>
+            </details>
+          )}
+        </li>
+      ))
+    }
+  </ul>
+</SidebarPersister>
+
+<nav class="site-links" aria-label={LABELS.zhCN['Site links']} data-sidebar-site-links>
+  {
+    site.map((link) => (
+      <a href={link.href}>
+        {link.title}
+        <Icon name="external" class="out" size="0.875rem" />
+      </a>
+    ))
+  }
+</nav>
+
+<style>
+  .site-links {
+    display: none;
+    gap: 0.125rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--xx-hairline);
+  }
+  @media (max-width: 63.99rem) {
+    .site-links {
+      display: grid;
+    }
+  }
+  .site-links a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.5rem;
+    color: var(--sl-color-gray-2);
+    font-size: var(--sl-text-sm);
+    text-decoration: none;
+  }
+  .site-links a:hover {
+    background: var(--xx-hover);
+    color: var(--sl-color-white);
+  }
+  .out {
+    color: var(--sl-color-gray-4);
+  }
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .groups {
+    display: grid;
+    gap: 0.125rem;
+    margin-top: 0.75rem;
+  }
+
+  /* Group title: bold, with a chevron on the right that turns down when open. */
+  summary,
+  .top-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.5rem;
+    color: var(--sl-color-white);
+    font-size: var(--sl-text-sm);
+    font-weight: 600;
+    line-height: 1.4;
+    text-decoration: none;
+  }
+  summary {
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  summary:hover,
+  .top-link:hover {
+    background: var(--xx-hover);
+  }
+  .caret {
+    flex-shrink: 0;
+    color: var(--sl-color-gray-3);
+    transition: transform 0.15s ease;
+  }
+  details[open] > summary .caret {
+    transform: rotate(90deg);
+  }
+
+  .items {
+    display: grid;
+    gap: 0.0625rem;
+    margin: 0.125rem 0 0.75rem;
+  }
+  .items a {
+    display: block;
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.5rem;
+    color: var(--sl-color-gray-2);
+    font-size: var(--sl-text-sm);
+    line-height: 1.4;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+  .items a:hover {
+    background: var(--xx-hover);
+    color: var(--sl-color-white);
+  }
+  .items a[aria-current='page'] {
+    background: var(--xx-active);
+    color: var(--sl-color-white);
+  }
+
+  /* Small grey sub-labels such as 桌面客户端 inside 集成指南. */
+  .sub-label {
+    display: block;
+    padding: 0.6rem 0.5rem 0.2rem;
+    color: var(--sl-color-gray-3);
+    font-size: var(--sl-text-xs);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .items > .sub:first-child .sub-label {
+    padding-top: 0.1rem;
+  }
+
+  summary:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--sl-color-accent);
+    outline-offset: -2px;
+  }
+
+  /* The phone menu keeps bigger tap targets, below Starlight's 50em desktop
+     breakpoint. */
+  @media not all and (min-width: 50em) {
+    .items a {
+      padding-block: 0.55rem;
+      font-size: var(--sl-text-base);
+    }
+    summary {
+      padding-block: 0.55rem;
+      font-size: var(--sl-text-base);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .caret {
+      transition: none;
+    }
+  }
+</style>

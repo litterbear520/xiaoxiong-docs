@@ -1,0 +1,103 @@
+---
+// Search box at the top of the sidebar, as on Claude's docs. Starlight's
+// search (button + dialog) stays in the header; on wide screens with a sidebar
+// theme.css hides that button and this one opens the same dialog. Phones keep
+// the header's search icon, so this box is hidden in the mobile menu.
+import { Icon } from '@astrojs/starlight/components'
+---
+
+<xx-sidebar-search class="sidebar-search">
+  <button type="button" aria-label={Astro.locals.t('search.label')} aria-keyshortcuts="Control+K">
+    <Icon name="magnifier" size="1rem" />
+    <span class="label" aria-hidden="true">{Astro.locals.t('search.label')}</span>
+    <kbd class="keys" aria-hidden="true">
+      <kbd data-platform-key>{Astro.locals.t('search.ctrlKey')}</kbd><kbd>K</kbd>
+    </kbd>
+  </button>
+</xx-sidebar-search>
+
+{/* Inline so Apple devices never flash "Ctrl" before "⌘", like Starlight's own button. */}
+<script is:inline>
+  (() => {
+    if (!/(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) return
+    const key = document.querySelector('xx-sidebar-search [data-platform-key]')
+    if (key) key.textContent = '⌘'
+    document.querySelector('xx-sidebar-search button')?.setAttribute('aria-keyshortcuts', 'Meta+K')
+  })()
+</script>
+
+<script>
+  class SidebarSearch extends HTMLElement {
+    connectedCallback() {
+      this.querySelector('button')?.addEventListener('click', (event) => {
+        // Starlight closes its dialog on any click outside it, and this click
+        // would reach that listener while it is still bubbling.
+        event.stopPropagation()
+        document.querySelector<HTMLButtonElement>('site-search button[data-open-modal]')?.click()
+      })
+    }
+  }
+  customElements.define('xx-sidebar-search', SidebarSearch)
+</script>
+
+<style>
+  .sidebar-search {
+    display: none;
+  }
+  @media (min-width: 50rem) {
+    /* Stays put while the page list scrolls under it. */
+    .sidebar-search {
+      display: block;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      margin: -1rem 0 -0.5rem;
+      padding: 1rem 0 0.5rem;
+      background: var(--sl-color-bg-sidebar);
+    }
+  }
+  button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    height: 2rem;
+    padding: 0 0.4rem 0 0.65rem;
+    border: 1px solid var(--xx-hairline);
+    border-radius: 0.5rem;
+    background: var(--xx-surface);
+    color: var(--sl-color-gray-3);
+    font: inherit;
+    font-size: var(--sl-text-sm);
+    cursor: pointer;
+  }
+  button:hover {
+    border-color: var(--xx-hairline-strong);
+    color: var(--sl-color-gray-2);
+  }
+  button:focus-visible {
+    outline: 2px solid var(--sl-color-accent);
+    outline-offset: 1px;
+  }
+  .label {
+    flex: 1;
+    text-align: start;
+  }
+  .keys {
+    display: flex;
+    gap: 0.2rem;
+    font-family: inherit;
+  }
+  .keys kbd {
+    min-width: 1.25rem;
+    padding: 0 0.3rem;
+    border: 1px solid var(--xx-hairline);
+    border-radius: 0.3rem;
+    background: var(--sl-color-black);
+    color: var(--sl-color-gray-3);
+    font-family: inherit;
+    font-size: 0.6875rem;
+    line-height: 1.25rem;
+    text-align: center;
+  }
+</style>

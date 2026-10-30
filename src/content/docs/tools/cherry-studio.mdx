@@ -1,0 +1,68 @@
+---
+title: Cherry Studio
+description: 在 Cherry Studio 中使用小熊API 的模型
+---
+
+import { Steps } from '@astrojs/starlight/components'
+
+配置 Cherry Studio 使用小熊API 的 GPT、Claude 和 Gemini 模型。
+
+## 概述
+
+[Cherry Studio](https://www.cherry-ai.com/) 是一款跨平台桌面聊天客户端，支持 Windows、macOS 和 Linux。它内置的 **New API** 服务商与小熊API 兼容，填入地址和密钥即可使用。本页界面文字以 Cherry Studio 2.1 为准，其他版本的按钮名称可能不同。
+
+## 前置条件
+
+- **小熊API 密钥** — 在控制台的 [API 密钥](/keys) 页创建。
+
+## 安装 Cherry Studio
+
+从 [Cherry Studio 官网](https://www.cherry-ai.com/) 下载对应系统的安装包并安装。
+
+## 配置 Cherry Studio
+
+<Steps>
+
+1. **打开 New API 服务商**
+
+   打开 **设置** → **模型服务**，在服务商列表中找到 **New API** 并点开。
+
+2. **填写地址和密钥**
+
+   | 项目 | 填写 |
+   | --- | --- |
+   | API 密钥 | 你的密钥，以 `sk-` 开头 |
+   | API 地址 | `https://api.little-bear.app` |
+
+   API 地址只填到域名，Cherry Studio 会自动补上 `/v1` 和后面的路径，不要粘贴 `/chat/completions` 这类完整路径。然后打开服务商右上角的启用开关。
+
+3. **添加模型**
+
+   点击 **同步模型**，在弹出的模型列表中点击模型右侧的 **+**，或点击 **添加全部模型**。日常聊天建议至少添加 `gpt-6-luna` 和 `gpt-6.1-sol`；Claude 和 Gemini 模型也在列表中，例如 `claude-sonnet-4-6` 和 `gemini-3-flash`。
+
+   列表为空说明地址或密钥不对，请回到上一步检查。
+
+</Steps>
+
+## 验证
+
+点击 **检测**，选择一个模型，点击 **开始**。显示 **通过** 和延迟毫秒数即接入成功。检测会发送一次真实请求，扣除少量余额。
+
+之后回到聊天页，在顶部的模型选择中选 **New API** 下的模型即可开始聊天。
+
+## 常见问题
+
+| 现象 | 原因 | 解决办法 |
+| --- | --- | --- |
+| 服务商列表中没有 **New API** | 旧版本没有内置 New API | 在服务商列表底部点击 **添加服务商**（旧版本叫 **添加**），名称填 `小熊API`；需要选 **提供商类型** 时选 **OpenAI**。然后按上面第 2、3 步填写地址、密钥并添加模型 |
+| 同步模型时列表为空，或提示服务商没有返回模型 | 地址或密钥不对 | API 地址填 `https://api.little-bear.app`，重新复制密钥 |
+| 检测显示 **失败** 或 **连接失败** | 当前线路无法连接，或被代理拦截 | 换一条 [线路](/docs/lines/)；也可以在 **设置** → **常规设置** → **代理模式** 中切换代理后重试 |
+| 聊天报 `Invalid token` | 密钥错误或已失效 | 详见 [错误码](/docs/errors/) |
+| 聊天报 `No available channel for model` | 手动添加的模型名写错了 | 删除这个模型，用 **同步模型** 重新添加 |
+| 选不到刚添加的模型 | 服务商的启用开关没有打开 | 回到服务商设置，打开右上角的开关 |
+
+## 下一步
+
+- [可用模型](/docs/models/) — 了解各模型的特点和用途
+- [计费与充值](/docs/billing/) — 了解模型价格和余额扣费
+- [线路选择](/docs/lines/) — 连接不稳定时更换线路

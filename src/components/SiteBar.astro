@@ -1,0 +1,1186 @@
+---
+// Replaces Starlight's header with the console's site bar (new-api
+// web/src/components/site-bar), so going between the console and the docs
+// feels like one site: the brand on the left and a pane of liquid glass on
+// the right at the top of a page; scrolling down slides the brand in and
+// stretches the glass over it into one pill in the middle of the screen.
+// The words, the links and who is signed in come from what the console
+// keeps in this browser (see src/lib/site-bar/state.ts), never from a
+// session refresh, which the server rate-limits.
+import Search from '@astrojs/starlight/components/Search.astro'
+
+import { FLAGS, LABELS, LANGUAGES } from '../lib/site-bar/labels'
+import { siteLinks } from '../lib/site-bar/state'
+
+const zh = LABELS.zhCN
+const links = siteLinks(null, zh)
+const { hasSidebar } = Astro.locals.starlightRoute
+const labels = LABELS
+---
+
+<div class="xx-bar" data-site-bar data-state="split">
+  <div class="xx-glass" aria-hidden="true"></div>
+  <span class="xx-seam" aria-hidden="true"></span>
+
+  <div class="xx-brand">
+    <a class="xx-brand-link" href="/">
+      <img src="/brand/logo.png" alt="" width="24" height="24" />
+      <span data-brand-name>小熊API</span>
+    </a>
+  </div>
+
+  <div class="xx-dock">
+    <nav class="xx-links" aria-label={zh['Site links']} data-la="Site links">
+      <span class="xx-lens" aria-hidden="true" data-site-lens></span>
+      {
+        links.map((link, index) => (
+          <a href={link.href} data-site-link aria-current={link.current ? 'page' : undefined} style={`--site-vt: site-link-${index}`}>
+            {link.title}
+          </a>
+        ))
+      }
+    </nav>
+    <span class="xx-divider xx-wide" aria-hidden="true"></span>
+
+    <div class="xx-search"><Search /></div>
+
+    <button type="button" class="xx-icon" popovertarget="xx-language-menu" aria-label={zh['Change language']} data-la="Change language">
+      <svg class="xx-i" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m5 8 6 6" /><path d="m4 14 6-6 2-3" /><path d="M2 5h12" /><path d="M7 2h1" /><path d="m22 22-5-10-5 10" /><path d="M14 18h6" />
+      </svg>
+    </button>
+    <div id="xx-language-menu" popover class="xx-menu" role="menu">
+      {
+        LANGUAGES.map((language) => (
+          <button type="button" role="menuitemradio" data-language={language.code}>
+            {FLAGS[language.code] ? (
+              <span class="xx-flag" set:html={FLAGS[language.code]} />
+            ) : (
+              <span class="xx-flag xx-flag-text">繁</span>
+            )}
+            <span>{language.label}</span>
+            <svg class="xx-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+          </button>
+        ))
+      }
+    </div>
+
+    <button type="button" class="xx-icon" data-theme-button aria-label={zh['Switch to dark theme']}>
+      <svg class="xx-theme-dark" viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M9 3.69A6.65 6.65 0 1 0 15.73 13.11A6.5 6.5 0 0 1 9 3.69Z" />
+      </svg>
+      <svg class="xx-theme-light" viewBox="0 0 20 20" aria-hidden="true">
+        <circle cx="10" cy="10" r="3.5" />
+        <path d="M10 2.64v1.09M10 16.27v1.09M2.64 10h1.09M16.27 10h1.09M4.8 4.8l.77.77M14.43 14.43l.77.77M4.8 15.2l.77-.77M14.43 5.57l.77-.77" />
+      </svg>
+    </button>
+
+    <button type="button" class="xx-icon xx-signed-in" popovertarget="xx-notifications" aria-label={zh.Notifications} data-la="Notifications">
+      <svg class="xx-i" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M10.268 21a2 2 0 0 0 3.464 0" />
+        <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" />
+      </svg>
+      <span class="xx-badge" data-badge hidden></span>
+    </button>
+    <div id="xx-notifications" popover class="xx-menu xx-panel">
+      <p class="xx-panel-title" data-l="Notifications">{zh.Notifications}</p>
+      <p class="xx-panel-lead" data-l="Latest platform updates and notices">{zh['Latest platform updates and notices']}</p>
+      <div data-notifications></div>
+    </div>
+
+    <button type="button" class="xx-avatar xx-signed-in" popovertarget="xx-account-menu" aria-label={zh['Account menu']} data-la="Account menu">
+      <span data-avatar></span>
+    </button>
+    <div id="xx-account-menu" popover class="xx-menu" role="menu">
+      <div class="xx-account-head">
+        <p data-account-name></p>
+        <p data-account-detail></p>
+      </div>
+      <hr />
+      <a role="menuitem" href="/profile" data-l="Account settings">{zh['Account settings']}</a>
+      <a role="menuitem" href="/system-settings/site/system-info" data-l="System Settings" data-super-admin hidden>{zh['System Settings']}</a>
+      <a role="menuitem" href="/dashboard" data-l="Console">{zh.Console}</a>
+    </div>
+
+    <a class="xx-sign-in xx-signed-out" href="/sign-in" data-l="Sign in">{zh['Sign in']}</a>
+
+    {
+      hasSidebar && (
+        <button type="button" class="xx-icon xx-narrow" popovertarget="starlight__sidebar" aria-label={zh['Toggle navigation menu']} data-la="Toggle navigation menu">
+          <span class="xx-menu-icon" aria-hidden="true"><span /><span /><span /></span>
+        </button>
+      )
+    }
+  </div>
+</div>
+
+{/* Before the first paint: the reader's language and who is signed in, so the
+    bar never flashes the wrong words or 登录 for a signed-in reader. The rules
+    are the tested ones in src/lib/site-bar/state.ts, kept short here. */}
+<script is:inline define:vars={{ labels }}>
+  ;(() => {
+    const bar = document.querySelector('[data-site-bar]')
+    if (!bar) return
+    let saved = null
+    let note = null
+    try {
+      saved = localStorage.getItem('i18nextLng')
+      note = JSON.parse(localStorage.getItem('newapi:site-bar:v1:account') || 'null')
+    } catch {}
+    const tag = (saved || navigator.language || '').replace('_', '-').toLowerCase()
+    let lang = labels[saved] ? saved : null
+    if (!lang && tag.startsWith('zh')) lang = /^zh-?(tw|hk|mo|hant)/.test(tag) ? 'zhTW' : 'zhCN'
+    if (!lang) lang = labels[tag.split('-')[0]] ? tag.split('-')[0] : 'en'
+    const words = labels[lang]
+    bar.dataset.language = lang
+    for (const el of bar.querySelectorAll('[data-l]')) el.textContent = words[el.dataset.l] || el.textContent
+    for (const el of bar.querySelectorAll('[data-la]')) el.setAttribute('aria-label', words[el.dataset.la] || '')
+    const links = bar.querySelectorAll('[data-site-link]')
+    const titles = [words.Home, words.Console, words['Model Square'], words.Offers, words.Docs]
+    if (links.length === titles.length) links.forEach((a, i) => (a.textContent = titles[i]))
+    // The page this one was opened from left its bar together: draw it so
+    // for the first frame (the cross-fade starts from it), then the module
+    // script opens it. Same sums as paint() below.
+    // The lens too, where the page before left it mid-slide, so the first
+    // frame has it there; the module script carries the slide on. (Before
+    // anything below reads the layout: set later, its opacity would fade.)
+    try {
+      const note = document.prerendering ? null : JSON.parse(sessionStorage.getItem('newapi:site-bar:v1:lens') || 'null')
+      const age = note ? Date.now() - note.at : NaN
+      if (note && document.referrer && note.from === document.referrer && age >= 0 && age <= 3000) {
+        const lens = bar.querySelector('.xx-lens')
+        lens.style.transform = `translate3d(${note.left}px,0,0)`
+        lens.style.width = `${note.right - note.left}px`
+        lens.style.opacity = '1'
+      }
+    } catch {}
+    // Drawn ahead of the click (speculation rules), the notes aren't written
+    // yet: the module script reads them when the page is shown.
+    let start = 0
+    try {
+      const handoff = document.prerendering ? null : JSON.parse(sessionStorage.getItem('newapi:site-bar:v1:handoff') || 'null')
+      if (handoff && document.referrer && handoff.from === document.referrer) start = Math.min(1, Math.max(0, +handoff.q || 0))
+    } catch {}
+    window.__xxReveal = new Promise((resolve) =>
+      addEventListener('pagereveal', (event) => resolve(event.viewTransition ? event.viewTransition.finished : null), { once: true })
+    )
+    if (start > 0) {
+      const brand = bar.querySelector('.xx-brand')
+      const dock = bar.querySelector('.xx-dock')
+      const glass = bar.querySelector('.xx-glass')
+      const seam = bar.querySelector('.xx-seam')
+      const pillWidth = 14 + brand.offsetWidth + 9 + dock.offsetWidth
+      const pillLeft = Math.round((bar.clientWidth - pillWidth) / 2)
+      const brandX = (pillLeft + 14 - brand.offsetLeft) * start
+      const lerp = (a, b) => a + (b - a) * start
+      brand.style.transform = `translate3d(${brandX}px,0,0)`
+      dock.style.transform = `translate3d(${(pillLeft + 14 + brand.offsetWidth + 9 - dock.offsetLeft) * start}px,0,0)`
+      const left = lerp(dock.offsetLeft, pillLeft)
+      glass.style.transform = `translate3d(${left}px,-50%,0)`
+      glass.style.width = `${lerp(dock.offsetLeft + dock.offsetWidth, pillLeft + pillWidth) - left}px`
+      seam.style.transform = `translate3d(${brand.offsetLeft + brand.offsetWidth + brandX + 4.5}px,-50%,0)`
+      seam.style.opacity = String(Math.min(1, Math.max(0, (start - 0.6) / 0.4)))
+      bar.dataset.state = start >= 1 ? 'assembled' : 'moving'
+    }
+    const hint = /(?:^|;\s*)new_api_has_session=/.test(document.cookie)
+    if (hint && note && typeof note.name === 'string' && note.avatar) {
+      bar.dataset.signedIn = ''
+      const avatar = bar.querySelector('[data-avatar]')
+      avatar.textContent = note.avatar.text
+      avatar.style.backgroundColor = note.avatar.background
+    }
+  })()
+</script>
+
+<script>
+  import { mountGlass } from '../lib/site-bar/glass'
+  import { LABELS, type LanguageCode } from '../lib/site-bar/labels'
+  import { Lens } from '../lib/site-bar/lens'
+  import { DOCS_BASE } from '../site'
+  import { BarMorph } from '../lib/site-bar/morph'
+  import {
+    ACCOUNT_NOTE_KEY,
+    accountFromNote,
+    announcementKey,
+    announcements,
+    HANDOFF_KEY,
+    handoffStart,
+    interfaceLanguage,
+    LANGUAGE_KEY,
+    LENS_HANDOFF_KEY,
+    lensNote,
+    nextTheme,
+    READ_MARKS_KEY,
+    SESSION_HINT_COOKIE,
+    siteLinks,
+    STATUS_KEY,
+    storedTheme,
+    THEME_KEY,
+    unreadCount,
+    type Arrival,
+    type ReadMarks,
+    type Theme,
+  } from '../lib/site-bar/state'
+
+  /** As in the console: the brand's inset in the pill, and room for the hairline. */
+  const BRAND_INSET = 14
+  const SEAM = 9
+
+  const read = (key: string) => {
+    try {
+      return localStorage.getItem(key)
+    } catch {
+      return null
+    }
+  }
+  const readJson = <T,>(key: string): T | null => {
+    try {
+      return JSON.parse(read(key) ?? 'null') as T | null
+    } catch {
+      return null
+    }
+  }
+
+  const bar = document.querySelector<HTMLElement>('[data-site-bar]')!
+  const glass = bar.querySelector<HTMLElement>('.xx-glass')!
+  const brand = bar.querySelector<HTMLElement>('.xx-brand')!
+  const dock = bar.querySelector<HTMLElement>('.xx-dock')!
+  const seam = bar.querySelector<HTMLElement>('.xx-seam')!
+  const nav = bar.querySelector<HTMLElement>('.xx-links')!
+  const lensEl = bar.querySelector<HTMLElement>('.xx-lens')!
+  const status = readJson<Record<string, unknown>>(STATUS_KEY)
+
+  // --- words and links, in the reader's language and the admin's switches
+  function applyLanguage(language: LanguageCode) {
+    const words = LABELS[language]
+    bar.dataset.language = language
+    for (const el of bar.querySelectorAll<HTMLElement>('[data-l]')) {
+      el.textContent = words[el.dataset.l as keyof typeof words] ?? el.textContent
+    }
+    for (const el of bar.querySelectorAll<HTMLElement>('[data-la]')) {
+      el.setAttribute('aria-label', words[el.dataset.la as keyof typeof words] ?? '')
+    }
+    nav.replaceChildren(
+      lensEl,
+      ...siteLinks(status, words).map((link, index) => {
+        const a = document.createElement('a')
+        a.href = link.href
+        a.dataset.siteLink = ''
+        if (link.current) a.setAttribute('aria-current', 'page')
+        a.style.setProperty('--site-vt', `site-link-${index}`)
+        a.textContent = link.title
+        return a
+      })
+    )
+    for (const item of bar.querySelectorAll<HTMLElement>('[data-language]')) {
+      item.setAttribute('aria-checked', String(item.dataset.language === language))
+    }
+    // the same links in the sidebar, for narrow screens (Sidebar.astro)
+    const sidebarLinks = document.querySelector<HTMLElement>('[data-sidebar-site-links]')
+    const template = sidebarLinks?.querySelector('a')
+    if (sidebarLinks && template) {
+      sidebarLinks.setAttribute('aria-label', words['Site links'])
+      sidebarLinks.replaceChildren(
+        ...siteLinks(status, words)
+          .filter((link) => !link.current)
+          .map((link) => {
+            const a = template.cloneNode(true) as HTMLAnchorElement
+            a.href = link.href
+            a.firstChild!.textContent = link.title
+            return a
+          })
+      )
+    }
+    updateThemeLabel()
+  }
+
+  // --- the lens under 文档, or under the link clicked to leave for
+  const litLink = () =>
+    nav.querySelector<HTMLElement>('[data-lit]') ?? nav.querySelector<HTMLElement>('[aria-current="page"]')
+
+  // --- the morph, as in the console (window scroll only: the docs scroll the page)
+  let geometry: {
+    brandTravel: number
+    dockTravel: number
+    brandRight: number
+    splitLeft: number
+    splitRight: number
+    pillLeft: number
+    pillRight: number
+  } | null = null
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+  function measure() {
+    const pillWidth = BRAND_INSET + brand.offsetWidth + SEAM + dock.offsetWidth
+    const pillLeft = Math.round((bar.clientWidth - pillWidth) / 2)
+    geometry = {
+      brandTravel: pillLeft + BRAND_INSET - brand.offsetLeft,
+      dockTravel: pillLeft + BRAND_INSET + brand.offsetWidth + SEAM - dock.offsetLeft,
+      brandRight: brand.offsetLeft + brand.offsetWidth,
+      splitLeft: dock.offsetLeft,
+      splitRight: dock.offsetLeft + dock.offsetWidth,
+      pillLeft,
+      pillRight: pillLeft + pillWidth,
+    }
+  }
+  function paint(q: number) {
+    let state = 'moving'
+    if (q <= 0) state = 'split'
+    if (q >= 1) state = 'assembled'
+    bar.dataset.state = state
+    if (!geometry) return
+    const g = geometry
+    const brandX = g.brandTravel * q
+    brand.style.transform = `translate3d(${brandX}px,0,0)`
+    dock.style.transform = `translate3d(${g.dockTravel * q}px,0,0)`
+    const left = lerp(g.splitLeft, g.pillLeft, q)
+    const right = lerp(g.splitRight, g.pillRight, q)
+    glass.style.transform = `translate3d(${left}px,-50%,0)`
+    glass.style.width = `${right - left}px`
+    seam.style.transform = `translate3d(${g.brandRight + brandX + SEAM / 2}px,-50%,0)`
+    seam.style.opacity = String(Math.min(1, Math.max(0, (q - 0.6) / 0.4)))
+  }
+  const still = matchMedia('(prefers-reduced-motion: reduce)')
+  const lens = new Lens(lensEl, () => still.matches)
+  // built in arrive(), once the page is shown
+  let morph: BarMorph | null = null
+  const together = () => morph?.value ?? 0
+
+  /**
+   * The page is on screen (at once, or on the click for one the browser drew
+   * ahead): take what the page before left, the bar's state and the lens's
+   * slide, and carry them on.
+   */
+  function arrive(arrival: Arrival, revealed: Promise<Promise<unknown> | null> | undefined) {
+    let handoff: string | null = null
+    let lensRaw: string | null = null
+    try {
+      handoff = sessionStorage.getItem(HANDOFF_KEY)
+      lensRaw = sessionStorage.getItem(LENS_HANDOFF_KEY)
+      sessionStorage.removeItem(HANDOFF_KEY)
+      sessionStorage.removeItem(LENS_HANDOFF_KEY)
+    } catch {
+      // storage blocked: start split, the lens in place
+    }
+    morph = new BarMorph({
+      pinned: false,
+      top: window.scrollY,
+      start: handoffStart(handoff, document.referrer, arrival),
+      onChange: paint,
+      reducedMotion: () => still.matches,
+    })
+    measure()
+    paint(morph.value)
+    lens.slide(litLink(), lensNote(lensRaw, document.referrer, arrival))
+    // Arrived with the bar together: open it once the cross-fade is over (or
+    // at once where there is none).
+    const opened = morph
+    void Promise.race([revealed?.then((finished) => finished), new Promise((r) => setTimeout(r, 600))])
+      .catch(() => {})
+      .then(() => requestAnimationFrame(() => opened.follow(false, window.scrollY)))
+  }
+
+  // Leaving for a whole new page: note the bar's state and where the lens
+  // is, for that page's bar (the console's, or the docs' again).
+  function leave() {
+    // as the next page's referrer names this one: without its #part
+    const from = location.href.split('#')[0]
+    try {
+      sessionStorage.setItem(HANDOFF_KEY, JSON.stringify({ q: together(), from, at: Date.now() }))
+      const note = nav.offsetWidth > 0 ? lens.note() : null
+      if (note) sessionStorage.setItem(LENS_HANDOFF_KEY, JSON.stringify({ ...note, from, at: Date.now() }))
+    } catch {
+      // storage blocked: the next page starts split
+    }
+  }
+  addEventListener('pageswap', leave)
+  addEventListener('pagehide', leave)
+
+  // A plain click on a site link lights it at once: the lens slides there
+  // while the next page loads, and that page's bar carries the slide on.
+  // The console's pages show nothing while their app starts (~250 ms, the
+  // old page held still on screen): the lens would stop mid-way, so it lands
+  // here first, then the page goes.
+  const LAND_MS = 280
+  // only the last click goes: a second one while the lens lands wins
+  let clicks = 0
+  nav.addEventListener('click', (event) => {
+    const link = (event.target as Element).closest<HTMLAnchorElement>('a[data-site-link]')
+    if (!link || link === litLink() || event.defaultPrevented || event.button !== 0) return
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    const click = ++clicks
+    for (const other of nav.querySelectorAll('[data-lit]')) other.removeAttribute('data-lit')
+    link.dataset.lit = ''
+    lens.slide(link)
+    if (link.pathname.startsWith(`${DOCS_BASE}/`)) return
+    event.preventDefault()
+    void lens.landed(LAND_MS).then(() => {
+      if (click === clicks) location.assign(link.href)
+    })
+  })
+  // Back here out of the back/forward cache: light this page again.
+  addEventListener('pageshow', (event) => {
+    if (!event.persisted || !nav.querySelector('[data-lit]')) return
+    for (const other of nav.querySelectorAll('[data-lit]')) other.removeAttribute('data-lit')
+    lens.slide(litLink())
+  })
+
+  let lastTop = window.scrollY
+  addEventListener(
+    'scroll',
+    () => {
+      const top = window.scrollY
+      morph?.scroll(lastTop, top)
+      lastTop = top
+    },
+    { passive: true }
+  )
+  new ResizeObserver(() => {
+    measure()
+    paint(together())
+    lens.place(litLink())
+  }).observe(dock)
+  new ResizeObserver(() => {
+    measure()
+    paint(together())
+  }).observe(bar)
+  mountGlass(glass)
+
+  // --- theme: the console's setting, flipped like the console's button
+  const currentTheme = (): Theme => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark')
+  const themeButton = bar.querySelector<HTMLButtonElement>('[data-theme-button]')!
+  function updateThemeLabel() {
+    const words = LABELS[(bar.dataset.language as LanguageCode) ?? 'zhCN']
+    themeButton.setAttribute('aria-label', currentTheme() === 'dark' ? words['Switch to light theme'] : words['Switch to dark theme'])
+  }
+  function applyTheme(theme: Theme) {
+    document.documentElement.dataset.theme = theme
+    updateThemeLabel()
+  }
+  themeButton.addEventListener('click', () => {
+    const theme = nextTheme(currentTheme())
+    try {
+      localStorage.setItem(THEME_KEY, theme)
+    } catch {
+      // storage blocked: the switch still works for this page
+    }
+    if (!document.startViewTransition || still.matches) applyTheme(theme)
+    else document.startViewTransition(() => applyTheme(theme))
+  })
+  // ThemeProvider set the theme before the first paint; the tested rule has the last word.
+  const chosen = storedTheme(read(THEME_KEY), null)
+  if (chosen && chosen !== currentTheme()) applyTheme(chosen)
+  matchMedia('(prefers-color-scheme: light)').addEventListener('change', (event) => {
+    const saved = read(THEME_KEY)
+    if (saved !== 'light' && saved !== 'dark') applyTheme(event.matches ? 'light' : 'dark')
+  })
+
+  // --- language: the console's setting; the docs' own pages stay in Chinese
+  for (const item of bar.querySelectorAll<HTMLButtonElement>('[data-language]')) {
+    item.addEventListener('click', () => {
+      const language = item.dataset.language as LanguageCode
+      try {
+        localStorage.setItem(LANGUAGE_KEY, language)
+      } catch {
+        // storage blocked: this page still switches
+      }
+      applyLanguage(language)
+      bar.querySelector<HTMLElement>('#xx-language-menu')?.hidePopover()
+    })
+  }
+
+  // --- menus open under their button, like the console's
+  for (const menu of bar.querySelectorAll<HTMLElement>('.xx-menu')) {
+    menu.addEventListener('beforetoggle', (event) => {
+      if ((event as ToggleEvent).newState !== 'open') return
+      const button = bar.querySelector<HTMLElement>(`[popovertarget="${menu.id}"]`)
+      if (!button) return
+      const box = button.getBoundingClientRect()
+      menu.style.top = `${box.bottom + 10}px`
+      menu.style.right = `${Math.max(8, innerWidth - box.right - 4)}px`
+    })
+  }
+
+  // --- the account: the console's note, while the server's session hint says so
+  const hasHint = new RegExp(`(?:^|;\\s*)${SESSION_HINT_COOKIE}=`).test(document.cookie)
+  const account = accountFromNote(hasHint, read(ACCOUNT_NOTE_KEY))
+  if (account) {
+    bar.dataset.signedIn = ''
+    const avatar = bar.querySelector<HTMLElement>('[data-avatar]')!
+    avatar.textContent = account.avatar.text
+    avatar.style.backgroundColor = account.avatar.background
+    bar.querySelector('[data-account-name]')!.textContent = account.name
+    bar.querySelector('[data-account-detail]')!.textContent = account.detail
+    bar.querySelector<HTMLElement>('[data-super-admin]')!.hidden = !account.superAdmin
+  } else {
+    delete bar.dataset.signedIn
+  }
+
+  // --- the bell: the console's announcements (cached status) and notice
+  const NOTICE_CACHE = 'xx-site-bar-notice'
+  async function loadNotice(): Promise<string> {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(NOTICE_CACHE) ?? 'null') as { at: number; text: string } | null
+      if (cached && Date.now() - cached.at < 5 * 60_000) return cached.text
+    } catch {
+      // no cache
+    }
+    try {
+      const response = await fetch('/api/notice', { credentials: 'same-origin' })
+      const body = (await response.json()) as { success?: boolean; data?: string }
+      const text = body.success ? (body.data ?? '').trim() : ''
+      sessionStorage.setItem(NOTICE_CACHE, JSON.stringify({ at: Date.now(), text }))
+      return text
+    } catch {
+      return ''
+    }
+  }
+  const readMarks = () => readJson<{ state?: ReadMarks }>(READ_MARKS_KEY)?.state ?? null
+  function showCount(notice: string) {
+    const count = unreadCount(status, readMarks(), notice)
+    const badge = bar.querySelector<HTMLElement>('[data-badge]')!
+    badge.hidden = count === 0
+    badge.textContent = count > 9 ? '9+' : String(count)
+  }
+  const panel = bar.querySelector<HTMLElement>('#xx-notifications')!
+  let notice = ''
+  function renderPanel() {
+    const words = LABELS[(bar.dataset.language as LanguageCode) ?? 'zhCN']
+    const list = panel.querySelector<HTMLElement>('[data-notifications]')!
+    const items = announcements(status)
+    list.replaceChildren()
+    if (notice) {
+      const block = document.createElement('section')
+      block.className = 'xx-notice'
+      const title = document.createElement('p')
+      title.className = 'xx-notice-title'
+      title.textContent = words.Notice
+      const text = document.createElement('p')
+      text.textContent = notice.replace(/<[^>]+>/g, '')
+      block.append(title, text)
+      list.append(block)
+    }
+    for (const item of items) {
+      const row = document.createElement('article')
+      row.className = 'xx-announcement'
+      const text = document.createElement('p')
+      text.textContent = String(item.content ?? '').replace(/<[^>]+>/g, '')
+      const date = document.createElement('time')
+      date.textContent = String(item.publishDate ?? '').slice(0, 10)
+      row.append(text, date)
+      list.append(row)
+    }
+    if (!notice && items.length === 0) {
+      const empty = document.createElement('p')
+      empty.className = 'xx-empty'
+      empty.textContent = words['No announcements at this time']
+      list.append(empty)
+    }
+    // read, as opening the console's bell marks them
+    const stored = readJson<{ state?: Record<string, unknown>; version?: number }>(READ_MARKS_KEY) ?? {}
+    const state = { closedUntilDate: null, ...stored.state } as Record<string, unknown>
+    const keys = new Set([...((state.readAnnouncementKeys as string[]) ?? []), ...items.map(announcementKey)])
+    state.readAnnouncementKeys = [...keys]
+    if (notice) state.lastReadNotice = notice
+    try {
+      localStorage.setItem(READ_MARKS_KEY, JSON.stringify({ state, version: stored.version ?? 0 }))
+    } catch {
+      // storage blocked: the count comes back on the next page
+    }
+    showCount(notice)
+  }
+  if (account) {
+    showCount(notice)
+    panel.addEventListener('toggle', (event) => {
+      if ((event as ToggleEvent).newState === 'open') renderPanel()
+    })
+    // the notice arrives a moment later; an open panel takes it in
+    void loadNotice().then((text) => {
+      notice = text
+      if (panel.matches(':popover-open')) renderPanel()
+      else showCount(notice)
+    })
+  }
+
+  applyLanguage(interfaceLanguage(read(LANGUAGE_KEY), navigator.language))
+  measure()
+  paint(together())
+  lens.place(litLink())
+  const revealed = (window as unknown as { __xxReveal?: Promise<Promise<unknown> | null> }).__xxReveal
+  // (not yet in TypeScript's DOM types)
+  if ((document as Document & { prerendering?: boolean }).prerendering) {
+    // Shown on the click: its own reveal (any during the drawing is over)
+    document.addEventListener(
+      'prerenderingchange',
+      () => {
+        const shown = new Promise<Promise<unknown> | null>((resolve) =>
+          addEventListener('pagereveal', (event) => resolve(event.viewTransition ? event.viewTransition.finished : null), { once: true })
+        )
+        arrive({ prerendered: true, now: Date.now() }, shown)
+      },
+      { once: true }
+    )
+  } else {
+    arrive({ prerendered: false, now: Date.now() }, revealed)
+  }
+</script>
+
+<style is:global>
+  /* Starlight's header becomes a clear strip the bar floats in, like the
+     console's: no colour, no hairline, clicks pass through between the parts. */
+  header.header {
+    padding: 0;
+    border-bottom: 0;
+    background: none;
+    pointer-events: none;
+  }
+
+  /* The console's colours and face, so both bars match to the pixel. */
+  .xx-bar {
+    --xx-fg: lab(2.75 0 0);
+    --xx-mute: lab(40.84 0 0);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    height: 100%;
+    padding: 0 0.75rem;
+    color: var(--xx-fg);
+    font-family: sans-serif;
+    text-autospace: no-autospace;
+    -webkit-font-smoothing: antialiased;
+  }
+  :root[data-theme='dark'] .xx-bar {
+    --xx-fg: rgb(240 239 236);
+    --xx-mute: rgb(195 194 183);
+  }
+  @media (min-width: 48rem) {
+    .xx-bar {
+      padding: 0 1rem;
+    }
+  }
+
+  .xx-brand,
+  .xx-dock {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 2.5rem;
+    pointer-events: auto;
+    will-change: transform;
+  }
+  .xx-brand {
+    flex-shrink: 1;
+    min-width: 0;
+    gap: 0.25rem;
+  }
+  .xx-dock {
+    flex-shrink: 0;
+    gap: 0.125rem;
+    padding: 0.125rem;
+  }
+  .xx-brand-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    padding: 0.25rem 0;
+    border-radius: 999px;
+    color: inherit;
+    text-decoration: none;
+  }
+  .xx-brand-link img {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex-shrink: 0;
+    border-radius: 0.375rem;
+    object-fit: cover;
+  }
+  .xx-brand-link span {
+    max-width: 10rem;
+    overflow: hidden;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* The pane of liquid glass, as the console's LiquidGlass draws it. */
+  .xx-glass {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    height: 2.5rem;
+    border-radius: 999px;
+    pointer-events: auto;
+    transform: translate3d(0, -50%, 0);
+    background: rgb(255 255 255 / 0.12);
+    backdrop-filter: blur(12px) saturate(1.8);
+    -webkit-backdrop-filter: blur(12px) saturate(1.8);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.85),
+      0 0 0 0.5px rgb(0 0 0 / 0.09),
+      0 6px 20px -6px rgb(0 0 0 / 0.2),
+      0 2px 5px -2px rgb(0 0 0 / 0.08);
+    transition:
+      background-color 0.5s,
+      box-shadow 0.5s;
+  }
+  .xx-glass::after {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    z-index: -1;
+    border-radius: inherit;
+    background: rgb(255 255 255 / 0.68);
+    filter: blur(6px);
+    pointer-events: none;
+  }
+  .xx-glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(
+      135deg,
+      rgb(255 255 255 / 0.95),
+      rgb(255 255 255 / 0.35) 28%,
+      rgb(255 255 255 / 0.08) 50%,
+      rgb(255 255 255 / 0.35) 72%,
+      rgb(255 255 255 / 0.8)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+    pointer-events: none;
+  }
+  :root[data-theme='dark'] .xx-glass {
+    background: rgb(255 255 255 / 0.04);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.14),
+      0 0 0 0.5px rgb(0 0 0 / 0.6),
+      0 8px 26px -6px rgb(0 0 0 / 0.65);
+  }
+  :root[data-theme='dark'] .xx-glass::after {
+    background: rgb(10 10 10 / 0.45);
+  }
+  :root[data-theme='dark'] .xx-glass::before {
+    background: linear-gradient(
+      135deg,
+      rgb(255 255 255 / 0.45),
+      rgb(255 255 255 / 0.12) 28%,
+      rgb(255 255 255 / 0.03) 50%,
+      rgb(255 255 255 / 0.12) 72%,
+      rgb(255 255 255 / 0.32)
+    );
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .xx-glass {
+      background: var(--sl-color-black);
+      backdrop-filter: none;
+    }
+    .xx-glass::after {
+      display: none;
+    }
+  }
+
+  .xx-seam,
+  .xx-divider {
+    width: 1px;
+    height: 1rem;
+    flex-shrink: 0;
+    background: color-mix(in srgb, var(--xx-fg) 12%, transparent);
+  }
+  .xx-seam {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    opacity: 0;
+    transform: translate3d(0, -50%, 0);
+  }
+  .xx-divider {
+    margin: 0 0.25rem;
+  }
+
+  /* Site links and the lens under the current one */
+  .xx-links {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+  }
+  .xx-links a {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    height: 2.25rem;
+    padding: 0 0.75rem;
+    border-radius: 999px;
+    color: var(--xx-mute);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.3s;
+  }
+  .xx-links a:hover,
+  .xx-links:not(:has([data-lit])) a[aria-current='page'],
+  .xx-links a[data-lit] {
+    color: var(--xx-fg);
+  }
+  .xx-lens {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 0;
+    border-radius: 999px;
+    opacity: 0;
+    pointer-events: none;
+    background: rgb(255 255 255 / 0.7);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.95),
+      0 0 0 0.5px rgb(0 0 0 / 0.06),
+      0 1px 4px -1px rgb(0 0 0 / 0.16);
+    transition: opacity 0.3s;
+  }
+  :root[data-theme='dark'] .xx-lens {
+    background: rgb(255 255 255 / 0.13);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.2),
+      0 0 0 0.5px rgb(0 0 0 / 0.4),
+      0 2px 6px -2px rgb(0 0 0 / 0.5);
+  }
+
+  /* Icon buttons */
+  .xx-icon,
+  .xx-avatar {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    color: var(--xx-fg);
+    cursor: pointer;
+  }
+  .xx-icon:hover,
+  .xx-avatar:hover {
+    background: color-mix(in srgb, var(--xx-fg) 6%, transparent);
+  }
+  .xx-icon:focus-visible,
+  .xx-avatar:focus-visible,
+  .xx-links a:focus-visible,
+  .xx-brand-link:focus-visible,
+  .xx-sign-in:focus-visible {
+    outline: 2px solid var(--sl-color-accent);
+    outline-offset: 0;
+  }
+  .xx-icon svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .xx-i {
+    width: 1.2rem;
+    height: 1.2rem;
+    stroke-width: 1.6;
+  }
+  [data-theme-button] svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    stroke-width: 1.27;
+  }
+  /* The theme a click goes to: the moon on a light page, the sun on a dark one. */
+  .xx-theme-light,
+  :root[data-theme='dark'] .xx-theme-dark {
+    display: none;
+  }
+  :root[data-theme='dark'] .xx-theme-light {
+    display: block;
+  }
+  /* The console's destructive badge: a soft red pill with red figures. */
+  .xx-badge {
+    position: absolute;
+    top: -0.25rem;
+    right: -0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.25rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: rgb(201 60 59 / 0.1);
+    color: rgb(201 60 59);
+    font-size: 10px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .xx-badge[hidden] {
+    display: none;
+  }
+  :root[data-theme='dark'] .xx-badge {
+    background: rgb(201 60 59 / 0.2);
+  }
+  .xx-avatar span {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 999px;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .xx-sign-in {
+    display: inline-flex;
+    align-items: center;
+    height: 2rem;
+    margin: 0 0.125rem;
+    padding: 0 0.875rem;
+    border-radius: 999px;
+    background: var(--xx-fg);
+    color: var(--sl-color-black);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .xx-sign-in:hover {
+    opacity: 0.9;
+  }
+
+  /* Signed in or out: the console's note decides (see the inline script). */
+  .xx-signed-in,
+  .xx-bar[data-signed-in] .xx-signed-out {
+    display: none;
+  }
+  .xx-bar[data-signed-in] .xx-signed-in {
+    display: grid;
+  }
+
+  /* The links need a wide screen; below it they are in the sidebar (Sidebar.astro).
+     The search box lives in the sidebar on wide screens. */
+  .xx-links,
+  .xx-wide {
+    display: none;
+  }
+  @media (min-width: 64rem) {
+    .xx-links {
+      display: flex;
+    }
+    .xx-wide {
+      display: block;
+    }
+  }
+  /* No box of its own: on wide pages with a sidebar theme.css hides only the
+     button (the sidebar has the search box), and the dialog in here must stay. */
+  .xx-search {
+    display: contents;
+  }
+  .xx-search site-search > button {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    color: var(--xx-fg);
+    justify-content: center;
+  }
+  .xx-search site-search > button > :not(svg) {
+    display: none;
+  }
+  .xx-narrow {
+    display: grid;
+  }
+  @media (min-width: 50rem) {
+    .xx-narrow {
+      display: none;
+    }
+  }
+  .xx-menu-icon {
+    position: relative;
+    width: 1rem;
+    height: 1rem;
+  }
+  .xx-menu-icon span {
+    position: absolute;
+    inset-inline: 0;
+    height: 1.5px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+  .xx-menu-icon span:nth-child(1) {
+    top: 3px;
+  }
+  .xx-menu-icon span:nth-child(2) {
+    top: 7px;
+  }
+  .xx-menu-icon span:nth-child(3) {
+    top: 11px;
+  }
+  .xx-menu-icon span {
+    transition:
+      top 0.3s,
+      transform 0.3s,
+      opacity 0.3s;
+  }
+  :root:has(#starlight__sidebar:popover-open) .xx-menu-icon span:nth-child(1) {
+    top: 7px;
+    transform: rotate(45deg);
+  }
+  :root:has(#starlight__sidebar:popover-open) .xx-menu-icon span:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  :root:has(#starlight__sidebar:popover-open) .xx-menu-icon span:nth-child(3) {
+    top: 7px;
+    transform: rotate(-45deg);
+  }
+  /* What Starlight's own menu button did (MobileMenuToggle.astro): the page
+     behind the open sidebar stays put. */
+  body:has(#starlight__sidebar:popover-open) {
+    overflow: hidden;
+  }
+  @media (min-width: 50rem) {
+    body:has(#starlight__sidebar:popover-open) {
+      overflow: auto;
+    }
+  }
+
+  /* Menus: native popovers, placed under their button by the script. */
+  .xx-menu {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    min-width: 12rem;
+    padding: 0.25rem;
+    border: 1px solid var(--xx-hairline);
+    border-radius: 0.75rem;
+    background: var(--xx-surface);
+    color: var(--sl-color-white);
+    box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.3);
+    font-family: sans-serif;
+    font-size: 0.875rem;
+  }
+  .xx-menu > button,
+  .xx-menu > a {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    border: 0;
+    border-radius: 0.5rem;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .xx-menu > [hidden] {
+    display: none;
+  }
+  .xx-menu > button:hover,
+  .xx-menu > a:hover {
+    background: var(--xx-hover);
+  }
+  .xx-menu hr {
+    margin: 0.25rem -0.25rem;
+    border: 0;
+    border-top: 1px solid var(--xx-hairline);
+  }
+  .xx-flag {
+    display: inline-flex;
+    width: 18px;
+    height: 12px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.12);
+  }
+  :root[data-theme='dark'] .xx-flag {
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.14);
+  }
+  .xx-flag svg {
+    width: 100%;
+    height: 100%;
+  }
+  .xx-flag-text {
+    align-items: center;
+    justify-content: center;
+    background: var(--xx-hover);
+    font-size: 9px;
+    line-height: 1;
+  }
+  .xx-check {
+    width: 1rem;
+    height: 1rem;
+    margin-inline-start: auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    visibility: hidden;
+  }
+  [aria-checked='true'] .xx-check {
+    visibility: visible;
+  }
+  .xx-account-head {
+    padding: 0.375rem 0.5rem;
+  }
+  .xx-account-head p {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .xx-account-head p + p {
+    color: var(--sl-color-gray-3);
+    font-size: 0.75rem;
+  }
+  .xx-panel {
+    width: min(22rem, calc(100vw - 1rem));
+    max-height: min(28rem, 70vh);
+    overflow-y: auto;
+    padding: 0.75rem;
+  }
+  .xx-panel p {
+    margin: 0;
+  }
+  .xx-panel-title {
+    font-weight: 600;
+  }
+  .xx-panel-lead,
+  .xx-announcement time,
+  .xx-empty {
+    color: var(--sl-color-gray-3);
+    font-size: 0.75rem;
+  }
+  .xx-notice,
+  .xx-announcement {
+    margin-top: 0.625rem;
+    padding: 0.625rem;
+    border-radius: 0.5rem;
+    background: var(--xx-hover);
+    white-space: pre-line;
+  }
+  .xx-notice-title {
+    margin-bottom: 0.25rem !important;
+    font-weight: 600;
+  }
+  .xx-empty {
+    margin-top: 1rem !important;
+    text-align: center;
+  }
+</style>

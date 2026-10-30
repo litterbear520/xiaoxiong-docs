@@ -1,0 +1,89 @@
+---
+// Page title in the style of Claude's docs: a grey breadcrumb (sidebar group,
+// then sub-label) above it, the page's description as a grey subtitle below
+// it, and the 「复制页面」 button on the right.
+import { breadcrumbFor } from '../lib/sidebar'
+import { sidebarSections } from '../site'
+import CopyPage from './CopyPage.astro'
+
+const route = Astro.locals.starlightRoute
+const crumbs = breadcrumbFor(sidebarSections, route.id)
+const { title, description } = route.entry.data
+---
+
+<div class="page-head">
+  {
+    crumbs.length > 0 && (
+      <nav class="crumbs" aria-label="页面位置" data-pagefind-ignore="all">
+        {crumbs.map((crumb, index) => (
+          <>
+            {index > 0 && (
+              <svg class="sep" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            )}
+            <span>{crumb}</span>
+          </>
+        ))}
+      </nav>
+    )
+  }
+  <div class="title-row">
+    <h1 id="_top">{title}</h1>
+    <div class="title-copy">
+      <CopyPage />
+    </div>
+  </div>
+  {description && <p class="page-description">{description}</p>}
+</div>
+
+<style>
+  .page-head {
+    margin-top: 0.75rem;
+  }
+  .crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0 0 0.6rem;
+    color: var(--sl-color-gray-3);
+    font-size: var(--sl-text-sm);
+    line-height: 1.4;
+  }
+  .sep {
+    width: 0.875rem;
+    height: 0.875rem;
+    color: var(--sl-color-gray-4);
+  }
+  .title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  h1 {
+    margin: 0;
+    color: var(--sl-color-white);
+    font-family: var(--xx-font-heading);
+    font-size: var(--sl-text-h1);
+    font-weight: 520;
+    line-height: var(--sl-line-height-headings);
+  }
+  .page-description {
+    margin: 0.75rem 0 0.25rem;
+    color: var(--sl-color-gray-2);
+    font-size: 1.0625rem;
+    font-weight: 400;
+    line-height: 1.55;
+  }
+  .title-copy {
+    flex-shrink: 0;
+  }
+  @media (max-width: 40rem) {
+    .title-row {
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+  }
+</style>

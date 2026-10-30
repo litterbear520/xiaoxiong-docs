@@ -1,0 +1,58 @@
+---
+title: 线路选择
+description: 选择一条可用的线路，连不上时切换
+---
+
+小熊API 有 4 条线路，连到同一个服务。账号、密钥和余额在每条线路上通用，切换线路只需更换域名。
+
+## 线路列表
+
+| 线路 | 地址 | 适用场景 |
+| --- | --- | --- |
+| 主线路（默认） | `https://api.little-bear.app` | 推荐，文档示例都用这条 |
+| 备用线路 1 | `https://api.bearovo.top` | 主线路打不开时使用 |
+| 备用线路 2 | `https://bearapi.huangsitao.fun` | 主线路打不开时使用 |
+| 备用线路 3 | `https://apicdn.bearovo.top` | 主线路打不开时使用 |
+
+## 切换线路
+
+只换域名，路径保持不变。以备用线路 1 为例：
+
+| 用途 | 主线路 | 备用线路 1 |
+| --- | --- | --- |
+| OpenAI 格式（大多数工具） | `https://api.little-bear.app/v1` | `https://api.bearovo.top/v1` |
+| Claude 格式（Claude Code） | `https://api.little-bear.app` | `https://api.bearovo.top` |
+| Gemini 格式（Gemini CLI） | `https://api.little-bear.app` | `https://api.bearovo.top` |
+| 控制台 | `https://api.little-bear.app` | `https://api.bearovo.top` |
+
+## 线路测速
+
+在控制台的 [API 密钥](/keys) 页点击右上角的 **API 地址**，弹窗会从你当前的网络测试每条线路：
+
+| 显示 | 含义 |
+| --- | --- |
+| 优秀（绿色） | 延迟低于 300 毫秒 |
+| 良好（黄色） | 300 到 800 毫秒 |
+| 较慢（橙色） | 超过 800 毫秒，可以使用，但响应慢 |
+| 不可用（红色） | 5 秒内没连上，换别的线路 |
+
+开关代理时测出的结果可能不同，以你实际调用时的网络为准。
+
+## 超时限制
+
+每条线路都会断开 100 秒内没有返回任何数据的连接：
+
+- **流式请求**（`"stream": true`）不受影响，模型边生成边返回。聊天软件和编程工具默认都用流式
+- **非流式请求**生成超过 100 秒会返回 `524`，长文和深度思考的请求容易超时
+
+遇到 `524` 时，打开流式输出。图片请求也可以加 `"stream": true` 保持连接，详见 [图片生成](/docs/images/)。
+
+## 登录地址
+
+GitHub 和 Google 登录只能从主线路 `https://api.little-bear.app` 发起。在其他线路上，请用邮箱和密码登录。
+
+## 下一步
+
+- [快速开始](/docs/quickstart/) — 发送第一个请求
+- [流式响应](/docs/streaming/) — 避开 100 秒超时
+- [常见问题](/docs/faq/) — 连不上或请求没有响应时排查

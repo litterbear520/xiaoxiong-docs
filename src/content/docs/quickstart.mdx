@@ -1,0 +1,236 @@
+---
+title: 快速开始
+description: 几分钟内完成第一次 API 调用
+---
+
+import { TabItem, Tabs } from '@astrojs/starlight/components'
+
+小熊API 兼容 OpenAI、Claude 和 Gemini 的官方接口。设置好 Base URL 和密钥，就能用 cURL 或官方 SDK 发出第一个请求。
+
+## 前置条件
+
+- 小熊API 账号，账户里有余额 — 在 [控制台](/sign-up) 注册，在 [钱包](/wallet) 充值
+- API 密钥 — 在控制台的 [API 密钥](/keys) 页创建，详见 [认证](/docs/auth/#创建-api-密钥)
+
+## 设置 Base URL
+
+所有请求发送到：
+
+```text
+https://api.little-bear.app
+```
+
+OpenAI 格式的 Base URL 要加 `/v1`，即 `https://api.little-bear.app/v1`。Claude 和 Gemini 格式只填域名，SDK 会自己补全路径。主线路连不上时，换一条 [备用线路](/docs/lines/)。
+
+## 发送第一个请求
+
+示例从环境变量 `XIAOXIONG_API_KEY` 读取密钥，先在终端里设置（Windows 和永久设置详见 [认证](/docs/auth/#设置环境变量)）：
+
+```bash
+export XIAOXIONG_API_KEY="sk-你的密钥"
+```
+
+三种格式用同一个密钥，任选一种即可。Python 示例需要 Python 3.10 以上，Node.js 示例需要 Node.js 22 以上。
+
+成功时，Python 和 Node.js 打印模型的回答，cURL 返回完整的 JSON。返回 `Invalid token` 说明密钥没传对，检查上面的环境变量；其他报错详见 [错误码](/docs/errors/)。
+
+### OpenAI 格式
+
+<Tabs syncKey="lang">
+<TabItem label="cURL">
+
+```bash
+curl https://api.little-bear.app/v1/chat/completions \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-6-luna",
+    "messages": [{"role": "user", "content": "你好"}]
+  }'
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```bash
+pip install openai
+```
+
+```python title="hello.py"
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.little-bear.app/v1",
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+)
+
+response = client.chat.completions.create(
+    model="gpt-6-luna",
+    messages=[{"role": "user", "content": "你好"}],
+)
+print(response.choices[0].message.content)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```bash
+npm install openai
+```
+
+```js title="hello.mjs"
+import OpenAI from 'openai'
+
+const client = new OpenAI({
+  baseURL: 'https://api.little-bear.app/v1',
+  apiKey: process.env.XIAOXIONG_API_KEY,
+})
+
+const response = await client.chat.completions.create({
+  model: 'gpt-6-luna',
+  messages: [{ role: 'user', content: '你好' }],
+})
+console.log(response.choices[0].message.content)
+```
+
+</TabItem>
+</Tabs>
+
+### Claude 格式
+
+<Tabs syncKey="lang">
+<TabItem label="cURL">
+
+```bash
+curl https://api.little-bear.app/v1/messages \
+  -H "x-api-key: $XIAOXIONG_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-6",
+    "max_tokens": 1024,
+    "messages": [{"role": "user", "content": "你好"}]
+  }'
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```bash
+pip install anthropic
+```
+
+```python title="hello_claude.py"
+import os
+import anthropic
+
+client = anthropic.Anthropic(
+    base_url="https://api.little-bear.app",
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+)
+
+message = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "你好"}],
+)
+print(message.content[0].text)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```bash
+npm install @anthropic-ai/sdk
+```
+
+```js title="hello_claude.mjs"
+import Anthropic from '@anthropic-ai/sdk'
+
+const client = new Anthropic({
+  baseURL: 'https://api.little-bear.app',
+  apiKey: process.env.XIAOXIONG_API_KEY,
+})
+
+const message = await client.messages.create({
+  model: 'claude-sonnet-4-6',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: '你好' }],
+})
+console.log(message.content[0].text)
+```
+
+</TabItem>
+</Tabs>
+
+`max_tokens` 必填，是这次回答最多输出的 token 数。
+
+### Gemini 格式
+
+<Tabs syncKey="lang">
+<TabItem label="cURL">
+
+```bash
+curl https://api.little-bear.app/v1beta/models/gemini-3-flash:generateContent \
+  -H "x-goog-api-key: $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contents": [{"role": "user", "parts": [{"text": "你好"}]}]
+  }'
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```bash
+pip install google-genai
+```
+
+```python title="hello_gemini.py"
+import os
+from google import genai
+from google.genai import types
+
+client = genai.Client(
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+    http_options=types.HttpOptions(base_url="https://api.little-bear.app"),
+)
+
+response = client.models.generate_content(model="gemini-3-flash", contents="你好")
+print(response.text)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```bash
+npm install @google/genai
+```
+
+```js title="hello_gemini.mjs"
+import { GoogleGenAI } from '@google/genai'
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.XIAOXIONG_API_KEY,
+  httpOptions: { baseUrl: 'https://api.little-bear.app' },
+})
+
+const response = await ai.models.generateContent({
+  model: 'gemini-3-flash',
+  contents: '你好',
+})
+console.log(response.text)
+```
+
+</TabItem>
+</Tabs>
+
+三种格式都能调用 GPT、Claude 和 Gemini 的对话模型，只需更换 `model`。
+
+## 下一步
+
+- [认证](/docs/auth/) — 永久设置环境变量，了解各格式的认证方式
+- [可用模型](/docs/models/) — 选择模型，查看价格
+- [流式响应](/docs/streaming/) — 边生成边接收回答
+- [CC Switch 配置](/docs/tools/cc-switch/) — 在 Claude Code、Codex 等编码工具里使用小熊API

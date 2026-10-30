@@ -1,0 +1,42 @@
+---
+title: 更新日志
+description: 小熊API 的模型、价格、线路和文档变化
+---
+
+## 2026-10-28
+
+- 文档新增 [OpenCode](/docs/tools/opencode/) 的接入说明：一份配置同时用 Claude、GPT 和 GLM 模型，OpenCode 1 和 2 都能用。
+- 文档改版：页面按快速上手、集成指南、API 参考、使用指南、SDK 与工具库重新整理，文字更精简。新增 [OpenAI 格式](/docs/openai/)、[可用模型](/docs/models/)、[计费与充值](/docs/billing/)、[错误处理](/docs/error-handling/) 和 [cURL](/docs/sdk/curl/) 页。旧地址会自动跳转到新页面。
+- 改正线路说明：4 条线路的非流式请求超过 100 秒没有返回都会报 `524`，详见 [线路选择](/docs/lines/)。
+- 文档新增 [CC Switch 配置](/docs/tools/cc-switch/)，放在集成指南的最前面：怎么安装 CC Switch，以及它的界面。
+- [Claude Code](/docs/tools/claude-code/)、[Codex](/docs/tools/codex/) 和 [Gemini CLI](/docs/tools/gemini-cli/) 三页新增 **用 CC Switch 配置**：在 API 密钥页一键导入，不用手改配置文件。原来的步骤改名为 **手动配置**。
+
+## 2026-10-27
+
+- 文档新增 [Pi](/docs/tools/pi/) 的接入说明：GPT 模型走 OpenAI 格式，Claude 模型走 Claude 格式。
+- 改正充值比例的说明：1 元人民币得到 10 美元余额，见 [计费与充值](/docs/billing/)。充值说明按现在的钱包页更新，充值金额按人民币选。
+
+## 2026-10-20
+
+- 控制台新增 **画图** 页：用一句话生成图片，可以接着改图和圈选改图，见 [网页画图](/docs/draw/)。
+
+## 2026-10-19
+
+- 新增 Claude 模型 `claude-opus-4-6` 和 `claude-sonnet-4-6`，Gemini 模型 `gemini-3.8-flash`、`gemini-3-flash`、`gemini-3.5-flash-lite` 和 `gemini-3.1-flash-lite`，以及开源模型 `gpt-oss-120b`。按官方价格计费，见 [可用模型](/docs/models/)。
+- 新增 Gemini 图片模型 `gemini-3.1-flash-image`，可以在对话里生成和编辑图片，也可以指定比例和分辨率，见 [图片生成](/docs/images/)。
+- 新增 Gemini 格式的接口（`/v1beta`）。OpenAI、Claude 和 Gemini 三种格式都能调用全部对话模型，见 [接口格式说明](/docs/models/#接口格式说明)。
+- 文档新增 [Claude 格式](/docs/claude/)、[Gemini 格式](/docs/gemini/) 和 [Gemini CLI](/docs/tools/gemini-cli/) 三页。[Claude Code](/docs/tools/claude-code/) 改为默认用 Claude 模型。
+- 新增 3 个图片模型：`gpt-image-2.5-sunburst`、`gpt-image-2.5-flare` 和 `gpt-image-2`，按官方价格计费，见 [图片生成](/docs/images/)。
+- GPT 对话模型不再返回图片。生成图片请用图片接口。
+- 文档按统一的写作规范修订：一句只说一件事，同一个事物只用一个名称。
+
+## 2026-10-18
+
+- 文档上线。包括快速开始、线路选择、模型与计费、账号与充值，以及 Cherry Studio、Codex CLI、Claude Code、Cursor、Cline 的接入说明。
+- 新增线路 `https://apicdn.bearovo.top`，见 [线路选择](/docs/lines/)。
+- 控制台 **API 密钥** 页的 **API 地址** 弹窗列出全部线路，打开时自动测速。
+
+## 2026-10-17
+
+- 新增主线路 `https://api.little-bear.app`。
+- 支持支付宝和微信充值，见 [计费与充值](/docs/billing/)。

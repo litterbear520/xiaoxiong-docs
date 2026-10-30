@@ -1,0 +1,173 @@
+---
+title: OpenCode
+description: 让 OpenCode 通过小熊API 使用 Claude、GPT 和国产模型
+---
+
+import { Aside, Steps, TabItem, Tabs } from '@astrojs/starlight/components'
+
+配置 OpenCode 使用小熊API。只需要一个环境变量和一个配置文件。
+
+## 概述
+
+[OpenCode](https://opencode.ai) 是一款开源的终端编程助手，可以读写项目文件、执行命令。通过小熊API，Claude 模型和 GLM 等国产模型走 [Claude 格式](/docs/claude/)，GPT 模型走 [OpenAI 格式](/docs/openai/)（Responses 接口），三者用同一个密钥和同一个地址。本页配置以 OpenCode 2.2 为准，OpenCode 1.19 也能用同一份配置。
+
+## 前置条件
+
+- **小熊API 密钥** — 在控制台的 [API 密钥](/keys) 页创建。
+- **Node.js** — 仅 Windows 需要，用 npm 安装 OpenCode。
+
+## 安装 OpenCode
+
+<Tabs syncKey="os">
+<TabItem label="macOS / Linux">
+
+```bash
+curl -fsSL https://opencode.ai/v2/install | bash
+```
+
+</TabItem>
+<TabItem label="Windows">
+
+```powershell
+npm install -g @opencode/cli
+```
+
+</TabItem>
+</Tabs>
+
+安装后打开一个新终端，运行 `opencode --version`，输出 `opencode v2.x` 即安装成功。已经装了 OpenCode 1（`opencode-ai`）的，不用升级，下面的配置两个版本通用。
+
+## 配置 OpenCode
+
+<Steps>
+
+1. **把密钥存入环境变量**
+
+   <Tabs syncKey="os">
+   <TabItem label="macOS / Linux">
+
+   ```bash
+   echo 'export XIAOXIONG_API_KEY="sk-你的密钥"' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+   使用 bash 时，把 `~/.zshrc` 换成 `~/.bashrc`。运行 `echo $XIAOXIONG_API_KEY`，打印出密钥即可。
+
+   </TabItem>
+   <TabItem label="Windows">
+
+   ```powershell
+   setx XIAOXIONG_API_KEY "sk-你的密钥"
+   ```
+
+   执行后关闭终端，之后的步骤在新终端中进行。在新终端运行 `echo $env:XIAOXIONG_API_KEY`，打印出密钥即可。
+
+   </TabItem>
+   </Tabs>
+
+2. **编辑配置文件**
+
+   打开 OpenCode 的配置文件，没有就新建一个：
+
+   | 系统 | 路径 |
+   | --- | --- |
+   | macOS / Linux | `~/.config/opencode/opencode.json` |
+   | Windows | `%USERPROFILE%\.config\opencode\opencode.json` |
+
+   写入下面的内容：
+
+   ```json title="opencode.json"
+   {
+     "$schema": "https://opencode.ai/config.json",
+     "model": "xiaoxiong/claude-sonnet-4-6",
+     "provider": {
+       "xiaoxiong": {
+         "npm": "@ai-sdk/anthropic",
+         "name": "小熊API",
+         "options": {
+           "baseURL": "https://api.little-bear.app/v1",
+           "apiKey": "{env:XIAOXIONG_API_KEY}"
+         },
+         "models": {
+           "claude-sonnet-4-6": {
+             "name": "Claude Sonnet 4.6",
+             "limit": { "context": 200000, "output": 32000 }
+           },
+           "glm-5": {
+             "name": "GLM-5",
+             "limit": { "context": 200000, "output": 32000 }
+           },
+           "gpt-6.1-sol": {
+             "name": "GPT-6.1 Sol",
+             "provider": { "npm": "@ai-sdk/openai" },
+             "limit": { "context": 272000, "output": 128000 }
+           }
+         }
+       }
+     }
+   }
+   ```
+
+   文件中原来就有 `provider` 的话，把 `"xiaoxiong": { … }` 这一段加进已有的 `provider`，不要写两个 `provider`。
+
+   保存后运行 `opencode models`，列表中出现 `xiaoxiong/claude-sonnet-4-6`、`xiaoxiong/glm-5` 和 `xiaoxiong/gpt-6.1-sol`，说明 OpenCode 读到了配置。
+
+3. **重启 OpenCode 的后台服务**（仅 OpenCode 2）
+
+   ```bash
+   opencode service restart
+   ```
+
+   OpenCode 2 在后台常驻一个服务，`opencode` 命令都通过它发请求。服务只认它启动时的环境变量，所以设好密钥后要重启一次。成功时打印服务的本机地址，例如 `http://127.0.0.1:49374`。
+
+</Steps>
+
+<Aside type="caution" title="别把密钥直接写进配置文件">
+配置文件经常被备份或分享。用 `{env:XIAOXIONG_API_KEY}` 从环境变量读取密钥，配置文件中就不会出现密钥。
+</Aside>
+
+### 配置项说明
+
+| 配置 | 含义 |
+| --- | --- |
+| `model` | 默认模型，写成 `xiaoxiong/模型名` |
+| `xiaoxiong` | 服务商 ID。选择模型时写成 `xiaoxiong/模型名` |
+| `npm` | 接口格式。`@ai-sdk/anthropic` 是 Claude 格式，Claude 和国产模型都用它 |
+| `name` | 在 OpenCode 中显示的名称 |
+| `options.baseURL` | 小熊API 的地址，**带** `/v1`。这一点和 Claude Code 不同：OpenCode 会在地址后面接 `/messages` 或 `/responses` |
+| `options.apiKey` | `{env:XIAOXIONG_API_KEY}` 表示从这个环境变量读取密钥 |
+| `models` | 在 OpenCode 中可选的模型，名字必须与 [模型广场](/pricing) 中的完全一致。要加 `kimi-k3`、`deepseek-3.2` 这类模型，照着 `glm-5` 那一项再写一项 |
+| `provider.npm` | 单个模型改用别的接口格式。GPT 模型写 `@ai-sdk/openai`，走 OpenAI 的 Responses 接口（Codex 用的也是它）。要加 `gpt-6-luna`，照着 `gpt-6.1-sol` 那一项写 |
+| `limit` | `context` 是上下文长度，`output` 是每次回答最多输出的 token 数，单位都是 token。OpenCode 据此显示还剩多少上下文 |
+
+这份配置用的是 `provider` 写法，OpenCode 1 和 2 都认。OpenCode 2 自己的新写法是 `providers`，所以编辑器可能把 `provider` 标成已弃用，不影响使用。
+
+换线路时，把 `baseURL` 的域名改掉，`/v1` 保留，详见 [线路选择](/docs/lines/)。
+
+## 验证
+
+```bash
+opencode run -m xiaoxiong/claude-sonnet-4-6 "Reply with exactly: gateway-ok"
+```
+
+打印出 `gateway-ok`，说明接入成功。把模型换成 `xiaoxiong/glm-5` 和 `xiaoxiong/gpt-6.1-sol` 各试一次，可以确认 3 个模型都能用。
+
+日常使用时，进入项目目录运行 `opencode`，用的是 `model` 指定的模型。想换默认模型，改 `model` 这一行，例如改成 `xiaoxiong/gpt-6.1-sol`。
+
+## 常见问题
+
+| 报错 | 原因 | 解决办法 |
+| --- | --- | --- |
+| `Invalid token` | 密钥错误或已失效；用 OpenCode 2 时，也可能是后台服务启动时还没有这个环境变量 | macOS / Linux 运行 `echo $XIAOXIONG_API_KEY`，确认能打印出密钥；Windows 用 `setx` 后要重开终端。再运行 `opencode service restart`。密钥本身的问题详见 [错误码](/docs/errors/) |
+| `UnexpectedStatus: 403`，请求还没发出就报错 | 终端设了 `HTTP_PROXY` 或 `HTTPS_PROXY` 代理，OpenCode 2 连本机后台服务时也走了代理 | 再设一个 `NO_PROXY=127.0.0.1,localhost,::1`，然后运行 `opencode service restart` |
+| 等一两分钟后报 `The provider response ended unexpectedly.` | `baseURL` 漏了 `/v1`，OpenCode 收到的是网页，不是模型的回答 | 改成 `https://api.little-bear.app/v1` |
+| `Model unavailable: xiaoxiong/…` | 配置文件的 `models` 里没有这个模型 | 把模型加进 `models`，或改用已有的模型 |
+| `No available channel for model …` | 小熊API 没有这个模型 | 把模型名改成 [模型广场](/pricing) 中的名字，例如 `claude-sonnet-4-6` |
+
+OpenCode 的完整配置说明请参阅官方的 [服务商文档](https://opencode.ai/docs/providers/)。
+
+## 下一步
+
+- [Claude 格式](/docs/claude/) — Claude 和国产模型使用的接口格式
+- [OpenAI 格式](/docs/openai/) — GPT 模型使用的 Responses 接口
+- [可用模型](/docs/models/) — 选择适合写代码的模型

@@ -1,0 +1,46 @@
+---
+title: 简介
+description: 小熊API 是什么，如何接入
+---
+
+## 什么是小熊API
+
+小熊API 是一个 AI API 网关：用一个 API 密钥调用 GPT、Claude、Gemini 等模型的对话和图片接口。它兼容 OpenAI、Claude 和 Gemini 三种官方接口格式，原来调用官方 API 的代码和工具，换掉 Base URL 和密钥就能用。
+
+## 核心特性
+
+- **三种接口格式** — 同一个密钥可以用 OpenAI、Claude 或 Gemini 格式调用。GPT、Claude 和 Gemini 模型在三种格式下都能调用，例如用 OpenAI 格式调用 `claude-sonnet-4-6`
+- **多家模型** — GPT、Claude、Gemini 系列，以及 DeepSeek、Kimi、Qwen、MiniMax、GLM 等模型，完整列表见 [模型广场](/pricing)
+- **图片生成** — 用 gpt-image 系列和 `gemini-3.1-flash-image` 生成和编辑图片，也可以在控制台的 **画图** 页直接画图
+- **多条线路** — 主线路之外还有 3 条备用线路，账号、密钥和余额通用
+- **按量计费** — 按官方美元价格计费，没有月费。充值时 ¥1 = $10 余额
+- **用量明细** — 在 [使用日志](/usage-logs/common) 查看每次请求的模型、token 数、花费和所用密钥
+
+## 支持的接口格式
+
+| 格式 | 端点 | 兼容 SDK |
+| --- | --- | --- |
+| OpenAI | `POST /v1/chat/completions`、`POST /v1/responses` | OpenAI SDK |
+| Claude | `POST /v1/messages` | Anthropic SDK |
+| Gemini | `POST /v1beta/models/{model}:generateContent` | Google GenAI SDK |
+
+大多数工具和 SDK 用 OpenAI 格式。要用 Claude 的思考和提示缓存，选 Claude 格式；要设置 Gemini 的思考级别或图片比例，选 Gemini 格式。图片接口详见 [图片生成](/docs/images/)。
+
+## 接入信息
+
+| 项目 | 值 |
+| --- | --- |
+| Base URL（OpenAI 格式） | `https://api.little-bear.app/v1` |
+| Base URL（Claude 格式） | `https://api.little-bear.app` |
+| Base URL（Gemini 格式） | `https://api.little-bear.app` |
+| API 密钥 | 在控制台的 [API 密钥](/keys) 页创建，以 `sk-` 开头 |
+| 模型 | 对话用 `gpt-6-luna`、`claude-sonnet-4-6`、`gemini-3-flash` 等，图片用 `gpt-image-2.5-sunburst` 等 |
+
+Claude 和 Gemini 格式的 Base URL 只到域名，SDK 会自己补上 `/v1` 或 `/v1beta`。主线路连不上时，换一条 [备用线路](/docs/lines/)，其他参数不变。
+
+## 下一步
+
+- [快速开始](/docs/quickstart/) — 几分钟内完成第一次 API 调用
+- [认证](/docs/auth/) — 创建 API 密钥，了解各格式的认证方式
+- [CC Switch 配置](/docs/tools/cc-switch/) — 在 Claude Code、Codex 等编码工具里使用小熊API
+- [可用模型](/docs/models/) — 选择模型，查看价格

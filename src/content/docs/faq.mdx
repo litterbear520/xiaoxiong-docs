@@ -1,0 +1,85 @@
+---
+title: 常见问题
+description: 连接、密钥、余额、模型和工具的常见问题
+---
+
+按主题整理的常见问题。遇到具体报错时，也可以按报错原文查 [错误码](/docs/errors/)。
+
+## 连接
+
+### 连不上或请求一直没有响应怎么办？
+
+在控制台的 [API 密钥](/keys) 页点击 **API 地址**，换成测速显示为绿色的线路，详见 [线路选择](/docs/lines/)。也可以开着和关掉代理各试一次，并确认工具的代理设置没有指向已关闭的代理。
+
+### 请求中途断开并报 524 怎么办？
+
+非流式请求超过 100 秒没有返回，连接被断开了。打开流式输出即可，详见 [线路选择](/docs/lines/)。
+
+### Base URL 要不要带 `/v1`？
+
+取决于工具会不会自己拼接：
+
+| 工具 | Base URL |
+| --- | --- |
+| OpenAI 官方 SDK、Codex、Cursor、Cline | `https://api.little-bear.app/v1` |
+| Cherry Studio | `https://api.little-bear.app`（会自动补 `/v1`，带上也行） |
+| Claude Code、Anthropic SDK | `https://api.little-bear.app`（不带 `/v1`） |
+| Gemini CLI、Google GenAI SDK | `https://api.little-bear.app`（不带 `/v1beta`） |
+| Pi | GPT 模型带 `/v1`，Claude 模型不带，详见 [Pi](/docs/tools/pi/) |
+| OpenCode | `https://api.little-bear.app/v1`（Claude 模型也带 `/v1`），详见 [OpenCode](/docs/tools/opencode/) |
+
+拿不准时先按工具的说明填写，报 `404` 再试另一种。
+
+## 密钥
+
+### 报 401 Invalid token 怎么办？
+
+密钥没有通过检查，最常见的原因是密钥没传到、抄错了，或者已经过期、额度用完。排查步骤详见 [错误码](/docs/errors/)。
+
+### 密钥泄露了怎么办？
+
+到 [API 密钥](/keys) 页删除它，再创建一个新的。删除后，使用旧密钥的请求会立即返回 `Invalid token`。
+
+### 设置了环境变量但不生效怎么办？
+
+终端里用 `export` 或 `$env:` 设置的变量只对当前窗口有效，Windows 用 `setx` 设置后也要重新打开终端，永久设置方法详见 [认证](/docs/auth/#设置环境变量)。从桌面图标打开的软件读不到终端里的变量，请在软件自己的设置里填写密钥。
+
+## 余额与充值
+
+### 付款后余额没到账怎么办？
+
+通常十几秒内到账。请确认付款金额与收银台显示的完全一致，超过 5 分钟仍未到账时，把订单号发给小熊，详见 [计费与充值](/docs/billing/)。
+
+### 为什么收银台的金额比我选的少几分钱？
+
+这是为了区分同时进行的订单。按收银台显示的金额付款即可，到账余额仍按你选的金额计算。
+
+### 为什么一句“你好”也消耗几百个 token？
+
+GPT 模型的上游会在每次请求前附带一段约 300 token 的固定系统指令，这部分计入输入，用 `gpt-6-luna` 时费用很低。Claude 和 Gemini 模型没有这段指令，详见 [计费与充值](/docs/billing/#费用估算)。
+
+### 为什么有余额还报额度不足？
+
+可能是这个密钥自己的额度上限用完了，而不是账户余额不够。到 [API 密钥](/keys) 页查看它的剩余额度，详见 [计费与充值](/docs/billing/#密钥额度)。
+
+## 模型
+
+### 报 No available channel for model 怎么办？
+
+模型名写错了。到 [模型广场](/pricing) 复制准确的名字，详见 [可用模型](/docs/models/#模型命名)。
+
+### 工具里获取不到模型列表怎么办？
+
+拉取模型列表也需要密钥。先确认密钥和 Base URL 填对了；仍然拉不到，就手动添加模型名，例如 `gpt-6-luna`。
+
+### 能生成图片吗？
+
+能。用 gpt-image 模型调用图片接口，或在对话中使用 `gemini-3.1-flash-image`，详见 [图片生成](/docs/images/)；不写代码的话，可以用控制台的 [网页画图](/docs/draw/)。其他对话模型不生成图片。
+
+### 支持 Claude 或 Gemini 模型吗？
+
+支持。Claude 和 Gemini 模型与 GPT 模型用同一个密钥调用，可以用 OpenAI 格式，也可以用 Claude 或 Gemini 格式，详见 [可用模型](/docs/models/)。新模型上线时会写在 [更新日志](/docs/changelog/) 里。
+
+### 为什么 Gemini 模型忽略 `max_tokens`？
+
+上游会忽略 Gemini 模型的 `max_tokens` 和 `maxOutputTokens`，想要短回答请在提示词里说明。Claude 模型的 `max_tokens` 正常生效，详见 [Gemini 格式](/docs/gemini/)。

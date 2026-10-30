@@ -1,0 +1,37 @@
+---
+// Redirect pages for docs addresses that moved (see movedPages in src/site.ts).
+// A static site has no server redirects, so each old address serves this page:
+// a meta refresh for any client, and a script that keeps the #anchor, sending
+// it to a different page when that section moved there.
+import { movedAnchors, movedPages, SITE_ORIGIN } from '../site'
+
+export function getStaticPaths() {
+  return Object.entries(movedPages).map(([moved, to]) => ({
+    params: { moved },
+    props: { to, anchors: movedAnchors[moved] ?? {} },
+  }))
+}
+
+const { to, anchors } = Astro.props
+const base = import.meta.env.BASE_URL.replace(/\/$/, '')
+const target = `${base}/${to}/`
+const anchorTargets = Object.fromEntries(Object.entries(anchors).map(([anchor, page]) => [anchor, `${base}/${page}/`]))
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex" />
+    <title>页面已移动</title>
+    <link rel="canonical" href={`${SITE_ORIGIN}${target}`} />
+    <meta http-equiv="refresh" content={`0;url=${target}`} />
+    <script is:inline define:vars={{ target, anchorTargets }}>
+      const anchor = decodeURIComponent(location.hash.slice(1))
+      location.replace((anchorTargets[anchor] ?? target) + location.hash)
+    </script>
+  </head>
+  <body>
+    <p>页面已移动到 <a href={target}>{target}</a>。</p>
+  </body>
+</html>

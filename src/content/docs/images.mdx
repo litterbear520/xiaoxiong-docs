@@ -1,0 +1,200 @@
+---
+title: 图片生成
+description: 用 API 生成和编辑图片
+---
+
+import { TabItem, Tabs } from '@astrojs/starlight/components'
+
+小熊API 提供 3 个 gpt-image 模型，接口与 OpenAI 的 Images API 相同；另有 Gemini 图片模型 `gemini-3.1-flash-image`，用对话接口调用，详见 [Gemini 图片模型](#gemini-图片模型)。不写代码也能画图，详见 [网页画图](/docs/draw/)。
+
+## 端点
+
+| 端点 | 用途 | 请求格式 |
+| --- | --- | --- |
+| `POST /v1/images/generations` | 用文字生成图片 | JSON |
+| `POST /v1/images/edits` | 按文字修改上传的图片 | `multipart/form-data` |
+
+gpt-image 模型只能用这两个端点，每次返回 1 张 PNG，以 base64 编码放在 `data[0].b64_json` 里。三个模型单价相同，实测耗时和费用相近：`gpt-image-2.5-sunburst` 画质最好、编辑时最能保留原图细节，推荐使用；`gpt-image-2.5-flare` 偏重速度；`gpt-image-2` 是上一代。
+
+## 请求示例
+
+下面的示例生成一张图片并保存为 `bear.png`，密钥从环境变量 `XIAOXIONG_API_KEY` 读取：
+
+<Tabs syncKey="lang">
+<TabItem label="cURL">
+
+```bash
+curl https://api.little-bear.app/v1/images/generations \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "一只小熊划着木船，夜晚的海面，满天星星"
+  }' \
+  | jq -r '.data[0].b64_json' | base64 --decode > bear.png
+```
+
+macOS 15 及以上自带 `jq`，Linux 用 `sudo apt install jq` 安装。
+
+</TabItem>
+<TabItem label="Python">
+
+```python title="draw.py"
+import base64
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.little-bear.app/v1",
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+)
+
+result = client.images.generate(
+    model="gpt-image-2.5-sunburst",
+    prompt="一只小熊划着木船，夜晚的海面，满天星星",
+)
+with open("bear.png", "wb") as f:
+    f.write(base64.b64decode(result.data[0].b64_json))
+```
+
+</TabItem>
+</Tabs>
+
+返回里的 `size` 和 `quality` 是这张图的实际尺寸和画质。在 PowerShell 里发送中文提示词时，请求体要转成 UTF-8 字节（`-Body ([Text.Encoding]::UTF8.GetBytes($body))`），并加上 `-TimeoutSec 600`。
+
+## 参数
+
+| 参数 | 是否生效 | 说明 |
+| --- | --- | --- |
+| `model` | 生效 | 3 个 gpt-image 模型之一 |
+| `prompt` | 生效 | 中文和英文都可以 |
+| `image`、`image[]` | 生效 | 只用于编辑，上传 1 张或多张图片 |
+| `background` | 生效 | 设为 `transparent` 生成透明背景的 PNG |
+| `stream` | 部分生效 | 生成期间只发心跳，图片在最后一次性返回，没有中间预览 |
+| `size`、`quality` | 忽略 | 由模型决定，详见 [尺寸与比例](#尺寸与比例) |
+| `n` | 忽略 | 每次只返回 1 张，要多张就发多次请求 |
+| `output_format`、`output_compression` | 忽略 | 始终返回 PNG |
+| `response_format` | 忽略 | 始终返回 `b64_json`，不返回图片链接 |
+| `moderation` | 忽略 | 固定为 `auto`，即 OpenAI 的标准审核 |
+
+### 尺寸与比例
+
+要控制横竖比例，把比例写在提示词开头。图片最长边约 1700 像素，更大的图片需要用其他工具放大。
+
+| 提示词开头 | 实测尺寸 |
+| --- | --- |
+| 不写比例 | 由模型决定，常见 1536×1024 或 1254×1254 |
+| `方形构图。` | 1254×1254 |
+| `横版 16:9。` | 1672×941 |
+| `竖版 9:16。` | 941×1672 |
+
+## 编辑图片
+
+编辑端点用表单上传图片。下面的示例给 `bear.png` 里的小熊加一顶帽子，结果保存为 `bear-hat.png`：
+
+```bash
+curl https://api.little-bear.app/v1/images/edits \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -F model=gpt-image-2.5-sunburst \
+  -F image=@bear.png \
+  -F prompt="给小熊戴一顶红色毛线帽，其他保持不变" \
+  | jq -r '.data[0].b64_json' | base64 --decode > bear-hat.png
+```
+
+- **多张图片** — 把 `-F image=@bear.png` 换成 `-F "image[]=@bear.png" -F "image[]=@hat.png"`，提示词里用图 1、图 2 指代，顺序与上传顺序相同
+- **Python** — 把请求示例里的 `client.images.generate` 换成 `client.images.edit`，加上 `image=open("bear.png", "rb")`；多张图片传列表。Windows 上编辑图片建议用 Python
+- **提示词** — 先说要改什么，再说其他保持不变
+
+## Gemini 图片模型
+
+`gemini-3.1-flash-image`（Nano Banana 2）能生成和编辑图片，并能指定比例和分辨率。它不能用图片接口，推荐用 Gemini 格式调用，图片在 `parts` 的 `inlineData.data` 里；也可以用 OpenAI 格式的 `/v1/chat/completions`，图片是 `message.content` 里的一段 Markdown 图片 `![image](data:image/jpeg;base64,…)`。两种方式都返回 JPEG。
+
+下面的脚本用 Gemini 格式生成一张方形图片，再给它加一顶帽子（先安装 SDK：`pip install google-genai`）：
+
+```python title="gemini_draw.py"
+import os
+from google import genai
+from google.genai import types
+
+client = genai.Client(
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+    http_options=types.HttpOptions(base_url="https://api.little-bear.app"),
+)
+
+
+def draw(contents, path, config):
+    response = client.models.generate_content(
+        model="gemini-3.1-flash-image", contents=contents, config=config
+    )
+    for part in response.candidates[0].content.parts:
+        if part.inline_data:
+            with open(path, "wb") as f:
+                f.write(part.inline_data.data)
+
+
+draw(
+    "一只小熊坐在木船上，夜晚的海，扁平插画",
+    "bear.jpg",
+    types.GenerateContentConfig(
+        response_modalities=["IMAGE"],
+        image_config=types.ImageConfig(aspect_ratio="1:1"),
+    ),
+)
+
+# 编辑：原图放在文字前面
+with open("bear.jpg", "rb") as f:
+    image = types.Part.from_bytes(data=f.read(), mime_type="image/jpeg")
+draw(
+    [image, "给小熊戴一顶红色毛线帽，其他保持不变"],
+    "bear-hat.jpg",
+    types.GenerateContentConfig(response_modalities=["IMAGE"]),
+)
+```
+
+`response_modalities` 设为 `["IMAGE"]` 时只返回图片，设为 `["TEXT", "IMAGE"]` 时可能附带一段文字。编辑时 `mime_type` 要与原图格式一致；实测上传 256×256 的 PNG、不设置比例时，返回 1024×1024 的 JPEG，只改了提示词要求的部分。
+
+比例和分辨率写在 `generationConfig.imageConfig` 里，实测尺寸如下：
+
+| `imageConfig` | 实测尺寸 |
+| --- | --- |
+| 不设置 | 1408×768 |
+| `"aspectRatio": "1:1"` | 1024×1024 |
+| `"aspectRatio": "16:9"` 或 `"9:16"` | 1376×768 或 768×1376 |
+| `"aspectRatio": "1:1", "imageSize": "2K"` | 2048×2048 |
+
+`aspectRatio` 还支持 `3:2`、`4:3`、`21:9` 等官方比例。`imageSize` 可选 `1K`（默认）、`2K`、`4K`（`K` 要大写，4K 未实测），分辨率越高输出 token 越多。
+
+用 OpenAI 格式调用 `/v1/chat/completions` 时，比例写在请求体里：`"extra_body": {"google": {"image_config": {"aspect_ratio": "9:16"}}}`。支持 Markdown 的聊天软件会直接显示返回的图片。
+
+## 计费与耗时
+
+图片模型按 token 从账户余额扣费，单价见 [模型广场](/pricing)，每次的用量和费用可在 [使用日志](/usage-logs/common) 查看。按 2026 年 10 月的价格实测：
+
+| 请求 | 用量 | 费用 |
+| --- | --- | --- |
+| gpt-image 生成 1 张 | 输出 343 token | 约 $0.010 |
+| gpt-image 生成 1 张透明背景 | 输出 1930 token | 约 $0.058 |
+| gpt-image 上传 1 张编辑 | 输入图片 1536 token，输出 343 token | 约 $0.023 |
+| Gemini 生成 1 张 1K 或 2K | 输出约 1500 或 2100 token | 约 $0.09 或 $0.13 |
+| Gemini 编辑 1 张 256×256 | 输入 271 token，输出 1267 token | 约 $0.08 |
+
+- **用量** — gpt-image 每张图输出 300 到 2000 token，由实际尺寸和画质决定；Gemini 图片模型的输出全部按图片输出价计费
+- **耗时** — gpt-image 每张 15 到 45 秒，透明背景和复杂提示词更慢；`gemini-3.1-flash-image` 每张 8 到 110 秒
+- **断开连接** — 请求发出后即使中途断开，图片仍会生成并扣费，客户端超时请设为 600 秒（官方 SDK 默认就是 600 秒）；返回报错的请求不扣费
+- **100 秒超时** — 每条线路都会断开 100 秒内没有返回数据的连接（`524`）。`gemini-3.1-flash-image` 偶尔超过 100 秒，会因此失败；gpt-image 请求加 `"stream": true` 可以保持连接，详见 [线路选择](/docs/lines/)
+
+## 常见问题
+
+| 现象 | 原因 | 处理方法 |
+| --- | --- | --- |
+| `503` `model … is only supported on /v1/images/generations and /v1/images/edits` | 用对话接口调用了 gpt-image 模型 | 改用图片接口 |
+| `500` `not supported model for image generation, only imagen models are supported` | 用图片接口调用了 `gemini-3.1-flash-image` | 改用 [Gemini 图片模型](#gemini-图片模型) 的调用方式 |
+| 在聊天软件或 Codex 里让模型画图，没有图片 | 除 `gemini-3.1-flash-image` 外，对话模型都不生成图片 | 调用图片接口，或在聊天软件里选 `gemini-3.1-flash-image` 直接说要画什么 |
+| 返回上游的内容审核提示 | 提示词或图片违反 OpenAI 或 Google 的使用政策 | 修改后重试，被拒绝的请求不扣费；多次违规的密钥会被停用 |
+
+## 下一步
+
+- [网页画图](/docs/draw/) — 在控制台里画图，不用写代码
+- [Gemini 格式](/docs/gemini/) — generateContent 接口的完整说明
+- [计费与充值](/docs/billing/) — 余额、充值和用量
+- [错误码](/docs/errors/) — 按状态码和报错原文排查

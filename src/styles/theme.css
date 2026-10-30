@@ -1,0 +1,527 @@
+/*
+  小熊API docs theme, modelled on Claude's developer docs in Chinese
+  (platform.claude.com/docs/zh-CN): a near-white or near-black page, neutral
+  grey UI, white code cards, and headings whose Latin letters and digits are
+  set in a serif while the Chinese stays in the system sans, exactly as
+  Claude's own Chinese pages fall back. Source Serif 4 (SIL OFL, Latin subset
+  only) stands in for Claude's serif; its figures are lining, so numbers and
+  dates in headings sit level, unlike Georgia's old-style ones. The logo's clay
+  orange (#D97757) stays as the one accent, for links and small marks.
+
+  Starlight keeps dark values on :root and light values on [data-theme='light'];
+  in light mode "white" is the strongest text colour and "black" the page.
+*/
+
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../fonts/source-serif-4-latin-wght.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  --xx-font-cjk: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', 'Noto Sans CJK SC';
+  --sl-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', var(--xx-font-cjk), Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --xx-font-heading: 'Source Serif 4', Georgia, var(--xx-font-cjk), serif;
+  --sl-font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --sl-color-white: #f0efec;
+  --sl-color-gray-1: #e5e4df;
+  --sl-color-gray-2: #c3c2b7;
+  --sl-color-gray-3: #9c9a92;
+  --sl-color-gray-4: #73726c;
+  --sl-color-gray-5: #3e3d39;
+  --sl-color-gray-6: #262625;
+  --sl-color-black: #151515;
+
+  --sl-color-accent-low: #4a2a1f;
+  --sl-color-accent: #d97757;
+  --sl-color-accent-high: #eba488;
+
+  --sl-color-bg-nav: var(--sl-color-black);
+  --sl-color-bg-sidebar: var(--sl-color-black);
+  --sl-color-hairline: rgba(255, 255, 255, 0.1);
+  --sl-color-hairline-light: rgba(255, 255, 255, 0.1);
+  --sl-color-hairline-shade: rgba(255, 255, 255, 0.1);
+  --sl-color-bg-inline-code: rgba(255, 255, 255, 0.05);
+
+  --xx-link: #eba488;
+  --xx-hairline: rgba(255, 255, 255, 0.1);
+  --xx-surface: #1a1a19;
+  --xx-hover: rgba(255, 255, 255, 0.06);
+  --xx-active: rgba(255, 255, 255, 0.12);
+  --xx-inline-code: #f0a080;
+  --xx-table-head: rgba(255, 255, 255, 0.05);
+  --xx-hairline-strong: rgba(255, 255, 255, 0.2);
+
+  --sl-line-height: 1.7;
+  --sl-line-height-headings: 1.25;
+  --sl-text-h1: 1.5rem;
+  --sl-text-h2: 1.25rem;
+  --sl-text-h3: 1.0625rem;
+  --sl-text-h4: 0.9375rem;
+  --sl-content-width: 48rem;
+  --sl-sidebar-width: 16.5rem;
+}
+
+/* The site bar is as tall as the console's (--app-header-height). */
+:root {
+  --sl-nav-height: 3.5rem;
+}
+
+@media (min-width: 50em) {
+  :root {
+    --sl-text-h1: 1.625rem;
+    --sl-text-h2: 1.3rem;
+    --sl-text-h3: 1.0625rem;
+  }
+}
+
+:root[data-theme='light'] {
+  --sl-color-white: #0b0b0b;
+  --sl-color-gray-1: #1f1e1d;
+  --sl-color-gray-2: #52514e;
+  --sl-color-gray-3: #73726c;
+  --sl-color-gray-4: #9c9a92;
+  --sl-color-gray-5: #d1cfc5;
+  --sl-color-gray-6: #f0efec;
+  --sl-color-gray-7: #f5f5f3;
+  --sl-color-black: #fcfcfb;
+
+  --sl-color-accent-low: #f6e2d9;
+  --sl-color-accent: #d97757;
+  --sl-color-accent-high: #a8502f;
+
+  --sl-color-hairline: rgba(11, 11, 11, 0.1);
+  --sl-color-hairline-light: rgba(11, 11, 11, 0.1);
+  --sl-color-hairline-shade: rgba(11, 11, 11, 0.1);
+  --sl-color-bg-inline-code: rgba(11, 11, 11, 0.05);
+
+  --xx-link: #a8502f;
+  --xx-hairline: rgba(11, 11, 11, 0.1);
+  --xx-surface: #ffffff;
+  --xx-hover: rgba(11, 11, 11, 0.05);
+  --xx-active: rgba(11, 11, 11, 0.08);
+  --xx-inline-code: #9a3b26;
+  --xx-table-head: rgba(11, 11, 11, 0.04);
+  --xx-hairline-strong: rgba(11, 11, 11, 0.2);
+}
+
+body {
+  background-color: var(--sl-color-black);
+}
+
+/* Going between pages, here and to and from the console, cross-fades the
+   page under the site bar, which sits in the same place on both sides.
+   Same rules as the console (new-api web/src/styles/site-bar.css). */
+@view-transition {
+  navigation: auto;
+  types: site;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.24s;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+/* The site links and the lens under them stay out of that cross-fade: they
+   follow the new page's live bar, where the lens carries on the slide the
+   click started. Each link is its own group, painted over the lens. */
+html:active-view-transition-type(site) [data-site-bar] [data-site-lens] {
+  view-transition-name: site-lens;
+}
+html:active-view-transition-type(site) [data-site-bar] [data-site-link] {
+  view-transition-name: var(--site-vt);
+  view-transition-class: site-link;
+}
+::view-transition-group(site-lens),
+::view-transition-group(*.site-link) {
+  animation: none;
+}
+::view-transition-old(site-lens),
+::view-transition-new(site-lens) {
+  block-size: 100%;
+  mix-blend-mode: normal;
+}
+@keyframes site-lens-out {
+  to {
+    opacity: 0;
+  }
+}
+::view-transition-old(site-lens) {
+  animation: site-lens-out 0.14s ease-out both;
+}
+::view-transition-new(site-lens) {
+  animation: none;
+}
+::view-transition-old(*.site-link),
+::view-transition-new(*.site-link) {
+  animation-duration: 0.24s;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* Sidebar: drawn by src/components/Sidebar.astro. Here only the pane, which
+   ends in a hairline like Claude's. */
+.sidebar-pane {
+  border-inline-end: 1px solid var(--xx-hairline);
+}
+.sidebar-content {
+  padding-top: 1rem;
+}
+
+/* The sidebar has its own search box on wide screens, so the header's goes;
+   pages without a sidebar keep it. Only the button is hidden: the search
+   dialog lives in the same element. */
+@media (min-width: 50em) {
+  :root[data-has-sidebar] header site-search > button[data-open-modal] {
+    display: none;
+  }
+}
+
+/* Right-hand table of contents, like Claude's: no heading and no 「概述」
+   entry, grey entries, the current one in full colour with a bar beside it. */
+.right-sidebar {
+  border-inline-start: 0;
+}
+.right-sidebar-panel {
+  padding-top: 2rem;
+}
+.right-sidebar-panel h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.right-sidebar-panel starlight-toc li:has(> a[href='#_top']) {
+  display: none;
+}
+starlight-toc nav > ul {
+  border-inline-start: 1px solid var(--xx-hairline);
+}
+.right-sidebar-panel starlight-toc a {
+  position: relative;
+  padding-block: 0.3rem;
+  color: var(--sl-color-gray-3);
+  font-size: var(--sl-text-sm);
+  line-height: 1.45;
+}
+.right-sidebar-panel starlight-toc a:hover {
+  color: var(--sl-color-white);
+}
+.right-sidebar-panel starlight-toc a[aria-current='true'],
+.right-sidebar-panel starlight-toc a[aria-current='true']:hover {
+  color: var(--sl-color-white);
+  font-weight: 500;
+}
+.right-sidebar-panel starlight-toc a[aria-current='true']::before {
+  content: '';
+  position: absolute;
+  inset-block: 0.3rem;
+  inset-inline-start: -1.5px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--sl-color-white);
+}
+.right-sidebar-panel starlight-toc a:focus-visible {
+  outline: 2px solid var(--sl-color-accent);
+  outline-offset: -2px;
+}
+
+/* No rule between the title and the body. */
+.content-panel + .content-panel {
+  border-top: 0;
+}
+.content-panel:first-child + .content-panel {
+  padding-top: 0.25rem;
+}
+
+/* Heading anchors appear on hover only. */
+.sl-anchor-link {
+  opacity: 0;
+  color: var(--sl-color-gray-4);
+  transition: opacity 0.15s;
+}
+.sl-heading-wrapper:hover .sl-anchor-link,
+.sl-anchor-link:focus-visible {
+  opacity: 1;
+}
+
+/* Content typography: 15px body like Claude's, headings in the heading face
+   at weight 520 like Claude's. Chinese falls back to the system font, which has
+   no 520 and takes the next heavier face: PingFang Semibold, Microsoft YaHei Bold. */
+.sl-markdown-content {
+  color: var(--sl-color-gray-2);
+  font-size: 0.9375rem;
+}
+.sl-markdown-content :is(h2, h3, h4, h5) {
+  color: var(--sl-color-white);
+  font-family: var(--xx-font-heading);
+  font-weight: 520;
+  letter-spacing: 0;
+}
+.sl-markdown-content h2 {
+  margin-top: 2.25rem;
+}
+.sl-markdown-content h3 {
+  margin-top: 1.75rem;
+}
+.sl-markdown-content :is(strong, b) {
+  color: var(--sl-color-white);
+  font-weight: 600;
+}
+.sl-markdown-content a:not(:where(.not-content *)) {
+  color: var(--xx-link);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+.sl-markdown-content a:not(:where(.not-content *)):hover {
+  color: var(--sl-color-white);
+}
+.sl-markdown-content :not(pre) > code {
+  padding: 0.1em 0.3em;
+  border: 1px solid var(--xx-hairline);
+  border-radius: 0.35rem;
+  background: var(--sl-color-bg-inline-code);
+  color: var(--xx-inline-code);
+  font-size: 0.875em;
+}
+.sl-markdown-content a code {
+  color: inherit;
+}
+.sl-markdown-content li::marker {
+  color: var(--sl-color-gray-4);
+}
+
+/* Steps: grey numbered discs on a hairline, the bold first line of each step
+   in the heading face, like Claude's numbered guides. */
+.sl-markdown-content .sl-steps > li::before {
+  border: 1px solid var(--xx-hairline);
+  background-color: var(--sl-color-gray-6);
+  font-family: var(--xx-font-heading);
+  font-size: 0.8125rem;
+  font-weight: 520;
+}
+.sl-markdown-content .sl-steps > li > p:first-child > strong:only-child {
+  font-family: var(--xx-font-heading);
+  font-size: 1.0625rem;
+  font-weight: 520;
+}
+
+/* Tables: a closed, rounded box with a tinted header row and hairlines
+   between rows. Cells may wrap anywhere so wide tables still fit the column;
+   phones scroll sideways instead. */
+.sl-markdown-content table {
+  display: table;
+  width: 100%;
+  border: 1px solid var(--xx-hairline);
+  border-radius: 0.5rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--sl-text-sm);
+  line-height: 1.6;
+}
+.sl-markdown-content :is(th, td) {
+  padding: 0.45rem 0.75rem;
+  border: 0;
+  border-bottom: 1px solid var(--xx-hairline);
+  background: none;
+  text-align: start;
+  vertical-align: top;
+}
+.sl-markdown-content tbody tr:last-child td {
+  border-bottom: 0;
+}
+.sl-markdown-content td {
+  overflow-wrap: anywhere;
+}
+.sl-markdown-content th {
+  background: var(--xx-table-head);
+  color: var(--sl-color-white);
+  font-weight: 500;
+  word-break: keep-all;
+}
+/* The header tint must follow the box's rounded corners. */
+.sl-markdown-content thead tr:first-child th:first-child {
+  border-start-start-radius: calc(0.5rem - 1px);
+}
+.sl-markdown-content thead tr:first-child th:last-child {
+  border-start-end-radius: calc(0.5rem - 1px);
+}
+.sl-markdown-content tr:nth-child(2n) {
+  background: none;
+}
+@media (max-width: 40rem) {
+  .sl-markdown-content table {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  .sl-markdown-content td {
+    overflow-wrap: normal;
+  }
+  /* Chinese can break after any character, so without a floor the columns
+     shrink to a few characters each instead of the table scrolling. */
+  .sl-markdown-content :is(th, td) {
+    min-width: 7.5rem;
+  }
+  .sl-markdown-content :is(th, td):first-child {
+    min-width: 4.5rem;
+  }
+}
+
+/* Tabs as quiet pills, like Claude's language switcher. */
+starlight-tabs [role='tablist'] {
+  gap: 0.125rem;
+  border-bottom: 0;
+}
+starlight-tabs .tab > [role='tab'] {
+  padding: 0.25rem 0.65rem;
+  border-radius: 0.4rem;
+  box-shadow: none;
+  color: var(--sl-color-gray-3);
+  font-size: var(--sl-text-sm);
+  font-weight: 500;
+}
+starlight-tabs .tab > [role='tab']:hover {
+  color: var(--sl-color-white);
+}
+starlight-tabs .tab [role='tab'][aria-selected='true'] {
+  background: var(--xx-active);
+  color: var(--sl-color-white);
+}
+starlight-tabs .tablist-wrapper ~ [role='tabpanel'] {
+  margin-top: 0.75rem;
+}
+
+/* Asides: one neutral card, colour only on the icon and title. */
+.starlight-aside {
+  border: 1px solid var(--xx-hairline);
+  border-radius: 0.6875rem;
+  background: var(--xx-surface);
+  color: var(--sl-color-gray-2);
+  font-size: 0.9375rem;
+}
+.starlight-aside__title {
+  font-weight: 600;
+}
+.starlight-aside--note .starlight-aside__title {
+  color: var(--sl-color-white);
+}
+.starlight-aside--tip .starlight-aside__title {
+  color: #3f8a52;
+}
+.starlight-aside--caution .starlight-aside__title {
+  color: var(--sl-color-accent-high);
+}
+.starlight-aside--danger .starlight-aside__title {
+  color: #c2413b;
+}
+:root:not([data-theme='light']) .starlight-aside--tip .starlight-aside__title {
+  color: #7cc48d;
+}
+:root:not([data-theme='light']) .starlight-aside--danger .starlight-aside__title {
+  color: #ef8a84;
+}
+
+/* Cards and link cards: flat white cards on a hairline, title in the heading face. */
+.card,
+.sl-link-card {
+  border: 1px solid var(--xx-hairline);
+  border-radius: 0.6875rem;
+  background: var(--xx-surface);
+  box-shadow: none;
+}
+.sl-link-card:hover {
+  border-color: var(--xx-hairline-strong);
+  background: var(--xx-surface);
+}
+.sl-link-card .title {
+  color: var(--sl-color-white);
+  font-family: var(--xx-font-heading);
+  font-weight: 520;
+}
+.sl-link-card .description {
+  color: var(--sl-color-gray-3);
+}
+
+/* Buttons (LinkButton). */
+.sl-link-button {
+  border-radius: 0.5rem;
+  font-size: var(--sl-text-sm);
+  font-weight: 500;
+}
+.sl-link-button.primary {
+  border-color: var(--sl-color-white);
+  background: var(--sl-color-white);
+  color: var(--sl-color-black);
+}
+.sl-link-button.secondary,
+.sl-link-button.minimal {
+  border: 1px solid var(--xx-hairline);
+  background: var(--xx-surface);
+  color: var(--sl-color-white);
+}
+
+/* Prev / next links at the bottom of a page: a small grey label over the page
+   name, instead of Starlight's 2xl title. */
+.pagination-links {
+  gap: 0.75rem;
+}
+.pagination-links a {
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--xx-hairline);
+  border-radius: 0.6875rem;
+  background: var(--xx-surface);
+  box-shadow: none;
+  color: var(--sl-color-gray-3);
+  font-size: var(--sl-text-xs);
+  line-height: 1.5;
+}
+.pagination-links a:hover {
+  border-color: var(--xx-hairline-strong);
+}
+.pagination-links a svg {
+  font-size: 1rem;
+  color: var(--sl-color-gray-3);
+}
+.pagination-links .link-title {
+  color: var(--sl-color-white);
+  font-family: var(--xx-font-heading);
+  font-size: var(--sl-text-sm);
+  font-weight: 520;
+  line-height: 1.6;
+}
+
+/* Code copy button: a 16px icon like Claude's instead of Expressive Code's 25px one. */
+:root .expressive-code .copy button {
+  width: 1.875rem;
+  height: 1.875rem;
+}
+:root .expressive-code .copy button::after {
+  margin: 0.4375rem;
+}
+
+/* Screenshots: the console is dark, so a hairline box keeps them apart from the page. */
+.sl-markdown-content img {
+  border: 1px solid var(--xx-hairline);
+  border-radius: 0.6875rem;
+}
+/* 2x screenshots: the wrapper gives the width they were taken at. */
+.sl-markdown-content .shot img {
+  width: var(--w);
+  max-width: 100%;
+  height: auto;
+}

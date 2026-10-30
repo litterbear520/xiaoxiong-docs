@@ -1,0 +1,205 @@
+---
+title: 错误处理
+description: 区分错误类型，正确重试和设置超时
+---
+
+import { TabItem, Tabs } from '@astrojs/starlight/components'
+
+调用小熊API 时，错误分两类：小熊API 自己返回的**网关错误**，以及模型厂商返回、经小熊API 转发的**上游错误**。本页介绍如何区分它们、哪些错误值得重试，以及如何设置超时。每条报错的具体含义详见 [错误码](/docs/errors/)。
+
+## 错误分类
+
+出错时返回 HTTP 状态码和一段 JSON。以 OpenAI 格式为例：
+
+```json
+{
+  "error": {
+    "code": "model_not_found",
+    "message": "No available channel for model gpt-4o under group default (distributor) (request id: 20261018120000123456789…)",
+    "type": "new_api_error"
+  }
+}
+```
+
+`message` 末尾的 `request id` 是这次请求的编号，联系小熊排查时请一起发送。
+
+### 网关错误
+
+请求没有通过小熊API 的检查，还没有发到上游。报错原文固定，可以直接在 [错误码](/docs/errors/) 中查到：
+
+- **密钥问题** — `401 Invalid token`，或密钥限制了模型、IP 时的 `403`
+- **余额问题** — `403 Insufficient user quota`、`403 Not enough quota to pre-consume` 等
+- **地址或模型名问题** — `404 Invalid URL (…)`、`503 No available channel for model …`
+
+### 上游错误
+
+请求已经发到模型厂商，由厂商返回错误。报错内容不固定，常见的有：
+
+- **`400` 内容审核** — 提示词或图片违反了厂商的使用政策，被拒绝的请求不扣费
+- **`429` 限流** — 上游暂时繁忙
+- **`5xx`** — 上游暂时出错
+
+此外，请求超过 100 秒没有返回时，会收到 `524` 超时页面（HTML，不是 JSON）。
+
+## 可重试与不可重试
+
+| 状态码 | 常见原因 | 是否重试 | 处理方式 |
+| --- | --- | --- | --- |
+| `400` | 请求体不是合法的 JSON，或被内容审核拒绝 | 否 | 修改请求或提示词 |
+| `401` | 密钥无效、没传、已过期或额度用完 | 否 | 检查密钥 |
+| `403` | 余额不足、密钥额度不够，或密钥限制了模型、IP | 否 | 充值或修改密钥设置。余额不足时重试不会自行恢复 |
+| `404` | 地址错误（如多写了一个 `/v1`），或调用了不支持的接口 | 否 | 检查 Base URL 和路径 |
+| `429` | 上游繁忙或限流 | 是 | 指数退避后重试 |
+| `500` | 服务器或上游出错 | 是 | 退避后重试。报 `not supported model for image generation` 时不要重试，改用对话接口 |
+| `502`、`504` | 上游不可达或超时 | 是 | 退避后重试 |
+| `503` | 模型名写错、模型暂时下线，或用对话接口调用了 gpt-image 模型 | 视情况 | 先按报错原文修正请求；模型名和接口都正确时再重试 |
+| `524` | 非流式请求超过 100 秒没有返回 | 否 | 改用流式 |
+
+## 指数退避与随机抖动
+
+失败后等一段时间再重试，每次的等待时间翻倍（1 秒、2 秒、4 秒……），再加一点随机时间，避免大量客户端同时重试。
+
+OpenAI 和 Anthropic 的官方 SDK 默认会对连接错误、`429` 和 `5xx` 自动重试 2 次，可以用 `max_retries`（Node.js 为 `maxRetries`）调整次数。需要自己控制重试条件时，先关闭 SDK 的重试，再参考下面的写法：
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python title="retry.py"
+import os
+import random
+import time
+
+from openai import APIConnectionError, APIStatusError, OpenAI
+
+client = OpenAI(
+    base_url="https://api.little-bear.app/v1",
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+    max_retries=0,  # 关闭 SDK 自带的重试，由下面的循环处理
+)
+
+RETRYABLE = {429, 500, 502, 504}  # 503 多半是模型名或接口用错，重试没用
+
+
+def chat_with_retry(messages, max_attempts=5):
+    for attempt in range(max_attempts):
+        try:
+            return client.chat.completions.create(model="gpt-6-luna", messages=messages)
+        except (APIConnectionError, APIStatusError) as error:
+            # 网络错误和超时是 APIConnectionError，没有状态码
+            retryable = isinstance(error, APIConnectionError) or error.status_code in RETRYABLE
+            if not retryable or attempt == max_attempts - 1:
+                raise
+            delay = min(2**attempt, 30) + random.random()  # 1、2、4、8… 秒，再加随机抖动
+            print(f"请求失败，{delay:.1f} 秒后重试：{error}")
+            time.sleep(delay)
+
+
+response = chat_with_retry([{"role": "user", "content": "你好"}])
+print(response.choices[0].message.content)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js title="retry.mjs"
+import OpenAI from 'openai'
+
+const client = new OpenAI({
+  baseURL: 'https://api.little-bear.app/v1',
+  apiKey: process.env.XIAOXIONG_API_KEY,
+  maxRetries: 0, // 关闭 SDK 自带的重试，由下面的循环处理
+})
+
+const RETRYABLE = new Set([429, 500, 502, 504]) // 503 多半是模型名或接口用错，重试没用
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function chatWithRetry(messages, maxAttempts = 5) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await client.chat.completions.create({ model: 'gpt-6-luna', messages })
+    } catch (error) {
+      // 网络错误和超时是 APIConnectionError，没有状态码
+      const retryable =
+        error instanceof OpenAI.APIConnectionError ||
+        (error instanceof OpenAI.APIError && RETRYABLE.has(error.status))
+      if (!retryable || attempt === maxAttempts - 1) throw error
+      const delay = Math.min(2 ** attempt, 30) * 1000 + Math.random() * 1000 // 1、2、4、8… 秒，再加随机抖动
+      console.log(`请求失败，${(delay / 1000).toFixed(1)} 秒后重试：${error.message}`)
+      await sleep(delay)
+    }
+  }
+}
+
+const response = await chatWithRetry([{ role: 'user', content: '你好' }])
+console.log(response.choices[0].message.content)
+```
+
+</TabItem>
+</Tabs>
+
+## 超时处理
+
+### 非流式请求
+
+非流式请求要等全部生成完才返回。长回答和思考时间长的模型可能需要几分钟，超时不要设得太短。每条线路都会在 100 秒没有返回时断开并返回 `524`，这类请求请改用流式。
+
+### 流式请求
+
+流式请求在整个生成过程中保持连接，读取超时建议设为几分钟。思考时间长的模型，开始输出前可能要等很久。
+
+### 图片请求
+
+图片请求生成完才返回：gpt-image 模型实测每张 15 到 45 秒，`gemini-3.1-flash-image` 最长约 110 秒，超过 100 秒的会被断开并报 `524`。gpt-image 请求加 `"stream": true` 可以保持连接。客户端超时建议设为 600 秒，也就是 OpenAI 官方 SDK 的默认值。请求发出后，即使客户端断开，图片仍会生成并扣费，超时后重试会为同一张图再付一次费。
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+import os
+
+import httpx
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.little-bear.app/v1",
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+    timeout=httpx.Timeout(300.0, connect=10.0),  # 连接 10 秒，读写 300 秒
+)
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js
+import OpenAI from 'openai'
+
+const client = new OpenAI({
+  baseURL: 'https://api.little-bear.app/v1',
+  apiKey: process.env.XIAOXIONG_API_KEY,
+  timeout: 300 * 1000, // 单位是毫秒
+})
+```
+
+</TabItem>
+</Tabs>
+
+单个请求可以另设超时：Python 用 `client.with_options(timeout=600.0)`，Node.js 在请求的第二个参数中传 `{ timeout: 600 * 1000 }`。
+
+## 频率限制
+
+小熊API 目前不对单个用户设置 RPM 或 TPM 限制。上游繁忙时可能返回 `429`，按上面的指数退避重试即可；持续出现时请联系小熊。批量处理时，限制同时进行的请求数，比一次发出大量请求更稳定。
+
+## 最佳实践
+
+- **记录错误详情** — 记录状态码、`message` 和其中的 `request id`，联系小熊排查时一起发送。
+- **只重试临时错误** — 除 `429` 外，`4xx` 错误要先修正请求，原样重试不会改变结果。
+- **长请求用流式** — 避开 100 秒的超时限制，也能更早发现连接中断。
+- **连续失败时暂停** — 多次重试仍失败时，暂停一段时间再试，不要无限重试。
+- **留意 HTML 响应** — 收到以 `<!doctype html>` 开头的网页而不是 JSON，通常是地址少了 `/v1`，请求打到了控制台网页上。
+
+## 下一步
+
+- [错误码](/docs/errors/) — 按状态码和报错原文查原因
+- [流式响应](/docs/streaming/) — 用流式避免长请求超时
+- [线路选择](/docs/lines/) — 切换线路与 100 秒超时
+- [计费与充值](/docs/billing/) — 余额不足时充值

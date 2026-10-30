@@ -1,0 +1,177 @@
+---
+title: 流式响应
+description: 用 SSE 边生成边接收模型的回答
+---
+
+import { TabItem, Tabs } from '@astrojs/starlight/components'
+
+流式响应让你在模型生成过程中逐段接收结果，而不必等完整回答返回。聊天界面、长回答，以及可能超过 100 秒的请求（详见 [线路选择](/docs/lines/)）都应该使用流式。
+
+小熊API 的三种接口格式都通过 SSE（Server-Sent Events）支持流式响应。
+
+## 启用流式响应
+
+| 接口 | 启用方式 | 流的结尾 |
+| --- | --- | --- |
+| OpenAI Chat Completions | 请求体加 `"stream": true` | `data: [DONE]` |
+| OpenAI Responses | 请求体加 `"stream": true` | `response.completed` 事件 |
+| Claude Messages | 请求体加 `"stream": true` | `message_stop` 事件 |
+| Gemini | 端点改为 `:streamGenerateContent?alt=sse` | 最后一块带 `finishReason` |
+
+### OpenAI 格式
+
+<Tabs syncKey="lang">
+<TabItem label="cURL">
+
+```bash
+curl https://api.little-bear.app/v1/chat/completions \
+  -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -N \
+  -d '{
+    "model": "gpt-6-luna",
+    "stream": true,
+    "messages": [{"role": "user", "content": "从 1 数到 5"}]
+  }'
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.little-bear.app/v1",
+    api_key=os.environ["XIAOXIONG_API_KEY"],
+)
+
+stream = client.chat.completions.create(
+    model="gpt-6-luna",
+    messages=[{"role": "user", "content": "从 1 数到 5"}],
+    stream=True,
+)
+for chunk in stream:
+    if chunk.choices and chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+print()
+```
+
+</TabItem>
+<TabItem label="Node.js">
+
+```js
+import OpenAI from 'openai'
+
+const client = new OpenAI({
+  baseURL: 'https://api.little-bear.app/v1',
+  apiKey: process.env.XIAOXIONG_API_KEY,
+})
+
+const stream = await client.chat.completions.create({
+  model: 'gpt-6-luna',
+  messages: [{ role: 'user', content: '从 1 数到 5' }],
+  stream: true,
+})
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content ?? '')
+}
+process.stdout.write('\n')
+```
+
+</TabItem>
+</Tabs>
+
+Responses 接口同样在请求体加 `"stream": true`，例如 `{"model": "gpt-6-luna", "stream": true, "input": "从 1 数到 5"}`。
+
+### Claude 格式
+
+```bash
+curl https://api.little-bear.app/v1/messages \
+  -H "x-api-key: $XIAOXIONG_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -N \
+  -d '{
+    "model": "claude-sonnet-4-6",
+    "max_tokens": 1024,
+    "stream": true,
+    "messages": [{"role": "user", "content": "从 1 数到 5"}]
+  }'
+```
+
+### Gemini 格式
+
+Gemini 格式不使用 `stream` 参数，而是把端点从 `generateContent` 换成 `streamGenerateContent?alt=sse`：
+
+```bash
+curl "https://api.little-bear.app/v1beta/models/gemini-3-flash:streamGenerateContent?alt=sse" \
+  -H "x-goog-api-key: $XIAOXIONG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -N \
+  -d '{"contents": [{"role": "user", "parts": [{"text": "从 1 数到 5"}]}]}'
+```
+
+`-N` 让 curl 收到一段就输出一段。各 SDK 的流式写法详见 [OpenAI SDK](/docs/sdk/openai/)、[Anthropic SDK](/docs/sdk/anthropic/) 和 [Google GenAI SDK](/docs/sdk/google-genai/)。
+
+## 事件格式
+
+| 接口 | 文字 | 用量 |
+| --- | --- | --- |
+| Chat Completions | 每块的 `choices[0].delta.content` | `[DONE]` 前最后一块的 `usage`，这一块的 `choices` 是空数组 |
+| Responses | `response.output_text.delta` 事件的 `delta` | `response.completed` 事件的 `response.usage` |
+| Claude Messages | `content_block_delta` 事件的 `delta.text` | 输入在 `message_start` 事件的 `message.usage`，输出在 `message_delta` 事件的 `usage` |
+| Gemini | 每块的 `candidates[0].content.parts[].text` | `usageMetadata`，以最后一块为准 |
+
+### OpenAI 事件
+
+Chat Completions 的流大致如下（省略了部分字段）：
+
+```text
+data: {"choices":[{"index":0,"delta":{"role":"assistant","content":"1"}}]}
+
+data: {"choices":[{"index":0,"delta":{"content":", 2, 3"}}]}
+
+data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: {"choices":[],"usage":{"prompt_tokens":12,"completion_tokens":9,"total_tokens":21}}
+
+data: [DONE]
+```
+
+OpenAI 官方需要在请求中加 `"stream_options": {"include_usage": true}` 才返回用量；小熊API 不加也会返回，加了也不影响。
+
+Responses 的每个事件前有一行 `event: 事件名`，与 `data` 中的 `type` 相同。
+
+### Claude 事件
+
+每个事件前有一行 `event: 事件名`，依次为 `message_start`、`content_block_start`、若干 `content_block_delta`、`content_block_stop`、`message_delta` 和 `message_stop`。不认识的事件（如 `ping`）直接跳过。
+
+### Gemini 事件
+
+每块是一行 `data:`，文字在 `candidates` 数组中。最后一块带 `finishReason`，用量以这一块的 `usageMetadata` 为准。
+
+## 最佳实践
+
+- **读到结尾再关闭** — 提前关闭连接会收不到后面的文字和最后的用量。
+- **按空行切分事件** — 一次网络读取可能只收到半个事件。先缓存收到的数据，按空行切出完整事件再解析 JSON。能用 SDK 就用 SDK。
+- **把读取超时设为几分钟** — 思考时间长的模型，开始输出前可能要等很久。设置方法详见 [错误处理](/docs/error-handling/#超时处理)。
+- **界面按帧刷新** — 渲染流式文字时先缓存增量，按固定间隔（如 `requestAnimationFrame`）刷新到页面，避免每个事件都重新渲染。
+
+## 常见问题
+
+| 现象 | 原因 | 解决办法 |
+| --- | --- | --- |
+| curl 等全部生成完才一起输出 | curl 默认缓冲输出 | 加 `-N` |
+| 经过你自己的 Nginx 等反向代理后，回答一次性出现 | 代理缓冲了响应 | Nginx 在对应的 `location` 中加 `proxy_buffering off;`，并且不要对 `text/event-stream` 开启 gzip |
+| 最后一块报 `IndexError` 或 `Cannot read properties of undefined` | Chat Completions 的用量块 `choices` 是空数组 | 读取 `choices[0]` 前先判断 `choices` 不为空 |
+| 生成到一半连接断开 | 客户端或中间代理的读取超时太短 | 把读取超时调到几分钟 |
+| 非流式请求报 `524` | 线路会断开 100 秒内没有数据的连接 | 改用流式，详见 [线路选择](/docs/lines/) |
+
+## 下一步
+
+- [错误处理](/docs/error-handling/) — 重试、超时和常见错误
+- [OpenAI 格式](/docs/openai/) — Chat Completions 和 Responses 接口
+- [Claude 格式](/docs/claude/) — Messages 接口的思考和提示缓存
+- [线路选择](/docs/lines/) — 切换线路与 100 秒超时

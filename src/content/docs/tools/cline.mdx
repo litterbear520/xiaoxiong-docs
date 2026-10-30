@@ -1,0 +1,75 @@
+---
+title: Cline
+description: 在 VS Code 的 Cline 插件中使用小熊API
+---
+
+import { Steps } from '@astrojs/starlight/components'
+
+配置 Cline 通过 OpenAI Compatible 服务商使用小熊API。
+
+## 概述
+
+Cline 是 VS Code 中的 AI 编程插件，可以读写文件、执行命令。小熊API 通过 Cline 自带的 **OpenAI Compatible** 服务商接入，使用 [OpenAI 格式](/docs/openai/)。
+
+注意不要选不带 Compatible 的 **OpenAI** 服务商，它不能修改地址。
+
+## 前置条件
+
+- **小熊API 密钥** — 在控制台的 [API 密钥](/keys) 页创建。
+- **VS Code** — Cline 作为 VS Code 插件运行。
+
+## 安装 Cline
+
+在 VS Code 的扩展市场中搜索 Cline 并安装。
+
+## 配置 Cline
+
+<Steps>
+
+1. **选择服务商**
+
+   打开 Cline 面板，点击右上角的设置（齿轮图标），把 **API Provider** 选为 **OpenAI Compatible**。
+
+2. **填写地址和密钥**
+
+   | 项目 | 填写 |
+   | --- | --- |
+   | Base URL | `https://api.little-bear.app/v1` |
+   | OpenAI Compatible API Key | 你的密钥，以 `sk-` 开头 |
+
+   Base URL 必须带 `/v1`。Cline 会原样使用这个地址，不会自动补全。
+
+3. **选择模型**
+
+   填好前两项后，**Model ID** 下拉框会列出小熊API 的模型，选择 `gpt-6.1-sol`。下拉框为空说明地址或密钥不对。
+
+4. **调整模型参数**
+
+   展开 **MODEL CONFIGURATION**：
+
+   | 项目 | 建议值 |
+   | --- | --- |
+   | Supports Images | 勾选 |
+   | Context Window Size | `272000` |
+   | Max Output Tokens | 留空 |
+
+</Steps>
+
+## 验证
+
+在 Cline 中发送一句话，能正常回复即接入成功。
+
+## 常见问题
+
+| 现象 | 原因 | 解决办法 |
+| --- | --- | --- |
+| **Model ID** 下拉框为空 | 地址或密钥不对 | Base URL 填 `https://api.little-bear.app/v1`，重新复制密钥 |
+| `404` | Base URL 少了 `/v1` | 改为 `https://api.little-bear.app/v1` |
+| `Invalid token` | 密钥错误或已失效 | 详见 [错误码](/docs/errors/) |
+| 对话很长后报上下文超限 | **Context Window Size** 设得比实际大 | 设为 `272000`，或开始一个新任务 |
+
+## 下一步
+
+- [OpenAI 格式](/docs/openai/) — Cline 使用的接口格式
+- [可用模型](/docs/models/) — 选择适合写代码的模型
+- [线路选择](/docs/lines/) — 连接不稳定时更换线路
