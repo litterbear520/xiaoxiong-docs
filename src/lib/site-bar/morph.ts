@@ -15,6 +15,9 @@ const DAMPING = 2 * Math.sqrt(STIFFNESS)
 
 export type Spring = { stiffness: number; damping: number }
 
+/** How long a frame usually takes on this screen (30 Hz in low power mode, 120 Hz …). */
+let usualFrame = 1 / 60
+
 /**
  * Moves a value to `to` on a spring, one animation frame at a time, keeping
  * the speed it already had. Returns a function that stops it where it is.
@@ -31,8 +34,12 @@ export function springTo(
   let last = performance.now()
   let frame = requestAnimationFrame(function step() {
     const now = performance.now()
-    // a long frame (a busy tab) must not throw the spring off
-    const dt = Math.min((now - last) / 1000, 1 / 30)
+    const elapsed = (now - last) / 1000
+    // A long frame (a busy tab, a view transition holding the screen) moves
+    // it half again a usual frame at most: it pauses rather than jumps, and
+    // a screen that draws slowly still moves it in real time.
+    const dt = Math.min(elapsed, usualFrame * 1.5)
+    usualFrame = Math.max(1 / 240, usualFrame + (Math.min(elapsed, usualFrame * 2) - usualFrame) * 0.1)
     last = now
     v += (-stiffness * (x - to) - damping * v) * dt
     x += v * dt

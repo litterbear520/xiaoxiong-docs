@@ -12,6 +12,7 @@ import {
   unreadCount,
 } from '../src/lib/site-bar/state'
 import { LABELS } from '../src/lib/site-bar/labels'
+import { lensAt, nearestLink } from '../src/lib/site-bar/lens'
 
 const zh = LABELS.zhCN
 
@@ -181,5 +182,38 @@ describe('lensNote', () => {
     expect(lensNote(note({ left: 'x' }), from, opened)).toBe(null)
     expect(lensNote('{oops', from, opened)).toBe(null)
     expect(lensNote(null, from, opened)).toBe(null)
+  })
+})
+
+describe('the dragged lens', () => {
+  // three links: 60px, 100px and 60px wide, 10px apart
+  const spans = [
+    { left: 0, right: 60 },
+    { left: 70, right: 170 },
+    { left: 180, right: 240 },
+  ]
+
+  it('is centred on the finger and as wide as the link under it', () => {
+    const lens = lensAt(spans, 120)
+    expect((lens.left + lens.right) / 2).toBe(120)
+    expect(lens.right - lens.left).toBe(100)
+  })
+
+  it('takes a width between two links while between them', () => {
+    const lens = lensAt(spans, 75)
+    expect(lens.right - lens.left).toBe(80)
+  })
+
+  it('follows the finger only part of the way past the last link', () => {
+    const lens = lensAt(spans, 310)
+    const middle = (lens.left + lens.right) / 2
+    expect(middle).toBeGreaterThan(210)
+    expect(middle).toBeLessThan(310)
+  })
+
+  it('lets go on the link whose middle is nearest', () => {
+    expect(nearestLink(spans, 70)).toBe(0)
+    expect(nearestLink(spans, 80)).toBe(1)
+    expect(nearestLink(spans, 400)).toBe(2)
   })
 })

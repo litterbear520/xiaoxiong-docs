@@ -31,10 +31,10 @@ const labels = LABELS
 
   <div class="xx-dock">
     <nav class="xx-links" aria-label={zh['Site links']} data-la="Site links">
-      <span class="xx-lens" aria-hidden="true" data-site-lens></span>
+      <span class="xx-lens" aria-hidden="true" data-site-lens><span class="xx-magnifier"></span></span>
       {
         links.map((link, index) => (
-          <a href={link.href} data-site-link aria-current={link.current ? 'page' : undefined} style={`--site-vt: site-link-${index}`}>
+          <a href={link.href} data-site-link draggable="false" aria-current={link.current ? 'page' : undefined} style={`--site-vt: site-link-${index}`}>
             {link.title}
           </a>
         ))
@@ -195,7 +195,7 @@ const labels = LABELS
 <script>
   import { mountGlass } from '../lib/site-bar/glass'
   import { LABELS, type LanguageCode } from '../lib/site-bar/labels'
-  import { Lens } from '../lib/site-bar/lens'
+  import { Lens, lensAt, nearestLink } from '../lib/site-bar/lens'
   import { DOCS_BASE } from '../site'
   import { BarMorph } from '../lib/site-bar/morph'
   import {
@@ -266,6 +266,7 @@ const labels = LABELS
         const a = document.createElement('a')
         a.href = link.href
         a.dataset.siteLink = ''
+        a.draggable = false
         if (link.current) a.setAttribute('aria-current', 'page')
         a.style.setProperty('--site-vt', `site-link-${index}`)
         a.textContent = link.title
@@ -340,7 +341,7 @@ const labels = LABELS
     seam.style.opacity = String(Math.min(1, Math.max(0, (q - 0.6) / 0.4)))
   }
   const still = matchMedia('(prefers-reduced-motion: reduce)')
-  const lens = new Lens(lensEl, () => still.matches)
+  const lens = new Lens(lensEl, () => still.matches, lensEl.querySelector<HTMLElement>('.xx-magnifier'))
   // built in arrive(), once the page is shown
   let morph: BarMorph | null = null
   const together = () => morph?.value ?? 0
@@ -423,6 +424,105 @@ const labels = LABELS
     for (const other of nav.querySelectorAll('[data-lit]')) other.removeAttribute('data-lit')
     lens.slide(litLink())
   })
+
+  // Press, drag sideways, let go, as in the console (site-nav-links.tsx
+  // useLensDrag): the lens follows the finger, swollen, and letting go clicks
+  // the link under it, so it opens exactly as a click would (above). A press
+  // that does not move is a plain click; Escape, or the browser taking the
+  // gesture over (a scroll), puts the lens back.
+  const DRAG_SLOP = 6
+  // the links' places are measured once the drag starts: they stay put while it lasts
+  let press: {
+    pointerId: number
+    x: number
+    y: number
+    dragging: boolean
+    aimed: number
+    spans: { left: number; right: number }[]
+    navLeft: number
+  } | null = null
+  // the browser's own click after a drag is not a click on a link
+  let swallowClick = false
+  const siteLinkEls = () => [...nav.querySelectorAll<HTMLAnchorElement>('a[data-site-link]')]
+  const spans = () => siteLinkEls().map((a) => ({ left: a.offsetLeft, right: a.offsetLeft + a.offsetWidth }))
+  function aim(index: number | null) {
+    siteLinkEls().forEach((a, i) => a.toggleAttribute('data-aimed', i === index))
+  }
+  function letGo(pick: boolean) {
+    const p = press
+    press = null
+    if (!p?.dragging) return
+    swallowClick = true
+    setTimeout(() => (swallowClick = false), 0)
+    if (nav.hasPointerCapture(p.pointerId)) nav.releasePointerCapture(p.pointerId)
+    delete nav.dataset.dragging
+    removeEventListener('keydown', onEscape)
+    aim(null)
+    lens.held = false
+    lens.swellTo(false)
+    const link = siteLinkEls()[p.aimed]
+    if (pick && link && link !== litLink()) link.click()
+    else lens.slide(litLink())
+  }
+  function onEscape(event: KeyboardEvent) {
+    if (event.key === 'Escape') letGo(false)
+  }
+  nav.addEventListener('pointerdown', (event) => {
+    if (!event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return
+    press = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, dragging: false, aimed: -1, spans: [], navLeft: 0 }
+  })
+  nav.addEventListener('pointermove', (event) => {
+    const p = press
+    if (!p || event.pointerId !== p.pointerId) return
+    // a mouse let go outside the links, where its release went unseen
+    if (event.pointerType === 'mouse' && (event.buttons & 1) === 0) {
+      letGo(false)
+      return
+    }
+    if (!p.dragging) {
+      if (Math.abs(event.clientX - p.x) < DRAG_SLOP) {
+        // mostly up or down: not ours
+        if (Math.abs(event.clientY - p.y) > DRAG_SLOP * 2) press = null
+        return
+      }
+      p.dragging = true
+      p.spans = spans()
+      p.navLeft = nav.getBoundingClientRect().left
+      nav.setPointerCapture(event.pointerId)
+      nav.dataset.dragging = ''
+      addEventListener('keydown', onEscape)
+      // the words again, for the lens to magnify (the links may have changed language)
+      lensEl
+        .querySelector('.xx-magnifier')
+        ?.replaceChildren(...siteLinkEls().map((a) => Object.assign(document.createElement('span'), { textContent: a.textContent })))
+      lens.held = true
+      lens.swellTo(true)
+    }
+    if (!p.spans.length) return
+    const x = event.clientX - p.navLeft
+    lens.follow(lensAt(p.spans, x))
+    const index = nearestLink(p.spans, x)
+    if (index !== p.aimed) {
+      p.aimed = index
+      aim(index)
+    }
+  })
+  nav.addEventListener('pointerup', (event) => {
+    if (event.pointerId === press?.pointerId) letGo(true)
+  })
+  nav.addEventListener('pointercancel', (event) => {
+    if (event.pointerId === press?.pointerId) letGo(false)
+  })
+  nav.addEventListener(
+    'click',
+    (event) => {
+      if (swallowClick && event.isTrusted) {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+      }
+    },
+    { capture: true }
+  )
 
   let lastTop = window.scrollY
   addEventListener(
@@ -841,12 +941,16 @@ const labels = LABELS
     border-radius: 999px;
     opacity: 0;
     pointer-events: none;
+    overflow: hidden;
     background: rgb(255 255 255 / 0.7);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.95),
       0 0 0 0.5px rgb(0 0 0 / 0.06),
       0 1px 4px -1px rgb(0 0 0 / 0.16);
-    transition: opacity 0.3s;
+    transition:
+      opacity 0.3s,
+      background-color 0.3s,
+      box-shadow 0.3s;
   }
   :root[data-theme='dark'] .xx-lens {
     background: rgb(255 255 255 / 0.13);
@@ -854,6 +958,59 @@ const labels = LABELS
       inset 0 1px 0 rgb(255 255 255 / 0.2),
       0 0 0 0.5px rgb(0 0 0 / 0.4),
       0 2px 6px -2px rgb(0 0 0 / 0.5);
+  }
+  /* Held and dragged (as in the console): sideways it is ours, up and down still scrolls */
+  .xx-links {
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .xx-links[data-dragging] {
+    cursor: grabbing;
+  }
+  .xx-links[data-dragging] a:not([data-aimed]) {
+    color: var(--xx-mute);
+  }
+  .xx-links[data-dragging] a[data-aimed] {
+    color: var(--xx-fg);
+  }
+  /* lifted over the words, which show through it magnified */
+  .xx-lens[data-swollen] {
+    z-index: 1;
+    background: rgb(255 255 255 / 0.92);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255),
+      0 0 0 0.5px rgb(0 0 0 / 0.08),
+      0 8px 20px -8px rgb(0 0 0 / 0.35);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+  }
+  :root[data-theme='dark'] .xx-lens[data-swollen] {
+    background: rgb(64 64 70 / 0.92);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.28),
+      0 0 0 0.5px rgb(0 0 0 / 0.5),
+      0 8px 20px -8px rgb(0 0 0 / 0.7);
+  }
+  .xx-magnifier {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+    opacity: 0;
+  }
+  .xx-magnifier span {
+    display: inline-flex;
+    align-items: center;
+    height: 2.25rem;
+    padding: 0 0.75rem;
+    color: var(--xx-fg);
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
   }
 
   /* Icon buttons */
