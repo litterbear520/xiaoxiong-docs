@@ -41,8 +41,10 @@ describe('docs content', () => {
   })
 
   // Readers only need the lines and the 100 s limit, not what the lines run on.
+  // Addresses are left out: a line's host name is fixed (apicdn.bearovo.top).
   it.each(pages)('$slug does not name the CDN behind the lines', ({ source }) => {
-    expect(source).not.toMatch(/CDN|Cloudflare/)
+    const prose = source.replace(/https?:\/\/[^\s`)]+/g, '')
+    expect(prose).not.toMatch(/cdn|cloudflare/i)
   })
 
   it.each(pages)('$slug contains no real-looking API key', ({ source }) => {
