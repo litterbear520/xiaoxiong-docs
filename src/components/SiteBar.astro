@@ -828,7 +828,7 @@ const labels = LABELS
     top: 50%;
     left: 0;
     height: 2.5rem;
-    border-radius: var(--glass-radius);
+    border-radius: 999px;
     pointer-events: auto;
     transform: translate3d(0, -50%, 0);
     background-color: var(--glass-tint);
@@ -836,8 +836,6 @@ const labels = LABELS
       inset 0 0 4px rgb(255 255 255 / 0.14),
       0 0 0 0.5px rgb(0 0 0 / var(--glass-outline)),
       0 4px 14px -6px rgb(0 0 0 / var(--glass-shadow));
-    /* prefixed first: the build keeps only the last of the two */
-    -webkit-backdrop-filter: blur(1px) saturate(1.35);
     backdrop-filter: blur(1px) saturate(1.35);
     transition:
       background-color 0.28s,
@@ -878,12 +876,21 @@ const labels = LABELS
       linear-gradient(#000 0 0);
     pointer-events: none;
   }
+  /* Safari before 18 knows only the prefixed name, and the build keeps just one
+     of the two in a rule. */
+  @supports not (backdrop-filter: none) {
+    .xx-glass {
+      -webkit-backdrop-filter: blur(1px) saturate(1.35);
+    }
+    .xx-lens[data-swollen] {
+      -webkit-backdrop-filter: blur(3px);
+    }
+  }
   @media (prefers-reduced-transparency: reduce) {
     /* !important: glass.ts sets its filter on the element, and the setting can
        change while the page is open */
     .xx-glass {
       background-color: var(--sl-color-black);
-      -webkit-backdrop-filter: none !important;
       backdrop-filter: none !important;
     }
   }
@@ -925,13 +932,15 @@ const labels = LABELS
     ) {
     text-shadow: 0 0 4px var(--bar-halo);
   }
-  [data-site-bar]
-    :is(
-      [data-site-link],
-      .xx-dock > button:not([data-bar-skip]),
-      site-search > button
-    ):not([aria-current]):hover {
-    background-color: color-mix(in srgb, currentColor 13%, transparent);
+  @media (hover: hover) {
+    [data-site-bar]
+      :is(
+        [data-site-link],
+        .xx-dock > button:not([data-bar-skip]),
+        site-search > button
+      ):not([aria-current]):hover {
+      background-color: color-mix(in srgb, currentColor 13%, transparent);
+    }
   }
   @media (prefers-reduced-motion: reduce) {
     .xx-glass {
@@ -1022,7 +1031,6 @@ const labels = LABELS
       inset 0 1px 0 rgb(255 255 255),
       0 0 0 0.5px rgb(0 0 0 / 0.08),
       0 8px 20px -8px rgb(0 0 0 / 0.35);
-    -webkit-backdrop-filter: blur(3px);
     backdrop-filter: blur(3px);
   }
   :root[data-theme='dark'] .xx-lens[data-swollen] {
@@ -1067,9 +1075,11 @@ const labels = LABELS
     color: var(--xx-fg);
     cursor: pointer;
   }
-  .xx-icon:hover,
-  .xx-avatar:hover {
-    background: color-mix(in srgb, var(--xx-fg) 6%, transparent);
+  @media (hover: hover) {
+    .xx-icon:hover,
+    .xx-avatar:hover {
+      background: color-mix(in srgb, var(--xx-fg) 6%, transparent);
+    }
   }
   .xx-icon:focus-visible,
   .xx-avatar:focus-visible,
@@ -1155,8 +1165,10 @@ const labels = LABELS
     background: #fff;
     color: #0b0b0b;
   }
-  .xx-sign-in:hover {
-    opacity: 0.9;
+  @media (hover: hover) {
+    .xx-sign-in:hover {
+      opacity: 0.9;
+    }
   }
 
   /* Signed in or out: the console's note decides (see the inline script). */
