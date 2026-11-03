@@ -2,13 +2,13 @@
 // without React: a pane that bends the page at its rim. A long pane (the
 // assembled pill) bends alike all along its middle, so it gets one map of
 // its two ends plus one stretched column, and changing width only moves
-// those parts. Other browsers than Chromium keep the CSS frost.
+// those parts. Other browsers than Chromium have the same glass from CSS,
+// without the bent rim.
 
-import { refractionMap, type RefractionMap } from './refraction'
+import { dockRim, refractionMap, type RefractionMap } from './refraction'
 
-/** Rim width and glass thickness in px, as in the console. */
-const BEVEL = 14
-const THICKNESS = 22
+/** The Dock's look, as in the console: a little blur, and richer colours. */
+const DOCK_BACKDROP = 'blur(1px) saturate(1.35)'
 const SVG = 'http://www.w3.org/2000/svg'
 
 function refracts() {
@@ -61,7 +61,7 @@ export function mountGlass(pane: HTMLElement): () => void {
     const next = stretch ? `stretch ${height} ${radius}` : `whole ${width}x${height} ${radius}`
     if (next === key) return place(width)
     key = next
-    const pane_ = { height, radius, bevel: BEVEL, thickness: THICKNESS }
+    const pane_ = { height, radius, rim: dockRim(height) }
     filter.replaceChildren()
     filter.setAttribute('height', String(height))
     const image = (href: string, x: number, w: number, fit: string, result: string) =>
@@ -85,7 +85,7 @@ export function mountGlass(pane: HTMLElement): () => void {
     }
     filter.append(node('feDisplacementMap', { in: 'SourceGraphic', in2: 'lens', scale, xChannelSelector: 'R', yChannelSelector: 'G' }))
     place(width)
-    const backdrop = `url(#${id}) blur(3px) saturate(1.7)`
+    const backdrop = `url(#${id}) ${DOCK_BACKDROP}`
     pane.style.setProperty('backdrop-filter', backdrop)
     pane.style.setProperty('-webkit-backdrop-filter', backdrop)
     pane.dataset.refracts = ''

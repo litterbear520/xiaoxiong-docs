@@ -1,33 +1,27 @@
 // Copied from the console (new-api web/src/lib/liquid-glass.ts) so both
-// bars bend the page alike; change them together.
+// bars bend the page alike; change them together. Only the Dock's rim: the
+// console's other one is for a frosted panel, and the docs have none.
 /**
- * Refraction for liquid glass, like the macOS Dock. The pane's rim is a
- * convex squircle bevel (after kube.io/blog/liquid-glass-css-svg): light
- * comes straight down, bends once on entering the glass (Snell's law), and
- * lands further in, so the rim shows a squeezed copy of what lies under the
- * middle. The result feeds an SVG feDisplacementMap.
+ * Refraction for liquid glass: how far in from the edge each pixel of a pane
+ * shows the page, on the curve measured on the real macOS Dock. The result
+ * feeds an SVG feDisplacementMap.
  */
 
-const REFRACTIVE_INDEX = 1.5
+/** How far, in px, a pane shows the page further in, `depth` px from its edge. */
+export type Rim = (depth: number) => number
 
-/** Bevel height at x, from 0 at the outer edge to 1 where the top is flat. */
-function bevel(x: number) {
-  return Math.pow(1 - Math.pow(1 - x, 4), 1 / 4)
-}
+/** The Dock, measured at 75px high: 20px at the edge, gone 12px in. */
+const DOCK = { height: 75, band: 12, most: 20, power: 1.9 }
 
-/**
- * How far sideways light lands after entering the bevel at x, in glass
- * thicknesses. `steepness` is the thickness divided by the bevel width.
- */
-export function bend(x: number, steepness: number) {
-  if (x <= 0 || x >= 1) return 0
-  const step = 1e-3
-  const from = Math.max(x - step, 0)
-  const to = Math.min(x + step, 1)
-  const slope = ((bevel(to) - bevel(from)) / (to - from)) * steepness
-  const incidence = Math.atan(slope)
-  const refraction = Math.asin(Math.sin(incidence) / REFRACTIVE_INDEX)
-  return bevel(x) * Math.tan(incidence - refraction)
+/** The Dock's rim on a pane `height` px high: the middle does not move at all. */
+export function dockRim(height: number): Rim {
+  const size = height / DOCK.height
+  const band = DOCK.band * size
+  const most = DOCK.most * size
+  return (depth) =>
+    depth <= 0 || depth >= band
+      ? 0
+      : most * Math.pow(1 - depth / band, DOCK.power)
 }
 
 /** Distance in from the edge of a rounded rectangle, and the way in. */
@@ -55,10 +49,7 @@ export type GlassPane = {
   width: number
   height: number
   radius: number
-  /** Width of the curved rim, in px. */
-  bevel: number
-  /** Thickness of the glass, in px: thicker glass bends further. */
-  thickness: number
+  rim: Rim
 }
 
 export type RefractionMap = {
@@ -74,7 +65,6 @@ export function refractionMap(pane: GlassPane): RefractionMap {
   const width = Math.max(1, Math.round(pane.width))
   const height = Math.max(1, Math.round(pane.height))
   const radius = Math.min(pane.radius, width / 2, height / 2)
-  const steepness = pane.thickness / pane.bevel
   const shifts = new Float32Array(width * height * 2)
   let most = 0
   for (let y = 0; y < height; y++) {
@@ -86,7 +76,7 @@ export function refractionMap(pane: GlassPane): RefractionMap {
         height / 2,
         radius
       )
-      const shift = bend(at.depth / pane.bevel, steepness) * pane.thickness
+      const shift = pane.rim(at.depth)
       const i = (y * width + x) * 2
       shifts[i] = at.dx * shift
       shifts[i + 1] = at.dy * shift

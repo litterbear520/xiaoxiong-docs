@@ -20,12 +20,12 @@ const labels = LABELS
 
 <div class="xx-bar" data-site-bar data-state="split">
   <div class="xx-glass" aria-hidden="true"></div>
-  <span class="xx-seam" aria-hidden="true"></span>
+  <span class="xx-seam" aria-hidden="true" data-bar-word="line"></span>
 
   <div class="xx-brand">
     <a class="xx-brand-link" href="/">
       <img src="/brand/logo.png" alt="" width="24" height="24" />
-      <span data-brand-name>小熊API</span>
+      <span data-brand-name data-bar-word>小熊API</span>
     </a>
   </div>
 
@@ -40,7 +40,7 @@ const labels = LABELS
         ))
       }
     </nav>
-    <span class="xx-divider xx-wide" aria-hidden="true"></span>
+    <span class="xx-divider xx-wide" aria-hidden="true" data-bar-word="line"></span>
 
     <div class="xx-search"><Search /></div>
 
@@ -88,7 +88,7 @@ const labels = LABELS
       <div data-notifications></div>
     </div>
 
-    <button type="button" class="xx-avatar xx-signed-in" popovertarget="xx-account-menu" aria-label={zh['Account menu']} data-la="Account menu">
+    <button type="button" class="xx-avatar xx-signed-in" data-bar-skip popovertarget="xx-account-menu" aria-label={zh['Account menu']} data-la="Account menu">
       <span data-avatar></span>
     </button>
     <div id="xx-account-menu" popover class="xx-menu" role="menu">
@@ -121,6 +121,16 @@ const labels = LABELS
   ;(() => {
     const bar = document.querySelector('[data-site-bar]')
     if (!bar) return
+    // The words as they read on this theme's plain page, which is what is
+    // under them nearly always: the cross-fade from the console's bar starts
+    // from this frame, and the module script's reading comes a little later.
+    // (Before anything below reads the layout: set later, they would fade.)
+    if (!matchMedia('(prefers-reduced-transparency: reduce)').matches) {
+      const ink = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'
+      for (const el of bar.querySelectorAll('[data-bar-word],[data-site-link],[data-site-lens],.xx-dock > button:not([data-bar-skip]),site-search > button')) {
+        el.dataset.ink = ink
+      }
+    }
     let saved = null
     let note = null
     try {
@@ -193,6 +203,7 @@ const labels = LABELS
 </script>
 
 <script>
+  import { BarInk } from '../lib/site-bar/backdrop'
   import { mountGlass } from '../lib/site-bar/glass'
   import { LABELS, type LanguageCode } from '../lib/site-bar/labels'
   import { Lens, lensAt, nearestLink } from '../lib/site-bar/lens'
@@ -249,6 +260,7 @@ const labels = LABELS
   const nav = bar.querySelector<HTMLElement>('.xx-links')!
   const lensEl = bar.querySelector<HTMLElement>('.xx-lens')!
   const status = readJson<Record<string, unknown>>(STATUS_KEY)
+  const barInk = new BarInk({ bar, glass })
 
   // --- words and links, in the reader's language and the admin's switches
   function applyLanguage(language: LanguageCode) {
@@ -260,12 +272,15 @@ const labels = LABELS
     for (const el of bar.querySelectorAll<HTMLElement>('[data-la]')) {
       el.setAttribute('aria-label', words[el.dataset.la as keyof typeof words] ?? '')
     }
+    // the new links carry on in the colour the old ones had
+    const ink = nav.querySelector<HTMLElement>('[data-site-link]')?.dataset.ink
     nav.replaceChildren(
       lensEl,
       ...siteLinks(status, words).map((link, index) => {
         const a = document.createElement('a')
         a.href = link.href
         a.dataset.siteLink = ''
+        if (ink) a.dataset.ink = ink
         a.draggable = false
         if (link.current) a.setAttribute('aria-current', 'page')
         a.style.setProperty('--site-vt', `site-link-${index}`)
@@ -293,6 +308,7 @@ const labels = LABELS
       )
     }
     updateThemeLabel()
+    barInk.ask()
   }
 
   // --- the lens under 文档, or under the link clicked to leave for
@@ -327,6 +343,7 @@ const labels = LABELS
     let state = 'moving'
     if (q <= 0) state = 'split'
     if (q >= 1) state = 'assembled'
+    if (bar.dataset.state !== state) barInk.ask()
     bar.dataset.state = state
     if (!geometry) return
     const g = geometry
@@ -372,6 +389,7 @@ const labels = LABELS
     measure()
     paint(morph.value)
     lens.slide(litLink(), lensNote(lensRaw, document.referrer, arrival))
+    barInk.newPage()
     // Arrived with the bar together: open it once the cross-fade is over (or
     // at once where there is none).
     const opened = morph
@@ -529,6 +547,7 @@ const labels = LABELS
     'scroll',
     () => {
       const top = window.scrollY
+      barInk.ask()
       morph?.scroll(lastTop, top)
       lastTop = top
     },
@@ -538,12 +557,19 @@ const labels = LABELS
     measure()
     paint(together())
     lens.place(litLink())
+    barInk.ask()
   }).observe(dock)
   new ResizeObserver(() => {
     measure()
     paint(together())
+    barInk.ask()
   }).observe(bar)
   mountGlass(glass)
+  // Anyone asking for less transparency has the opaque pane: nothing to read.
+  const solid = matchMedia('(prefers-reduced-transparency: reduce)')
+  const holdInk = () => barInk.hold(solid.matches)
+  holdInk()
+  solid.addEventListener('change', holdInk)
 
   // --- theme: the console's setting, flipped like the console's button
   const currentTheme = (): Theme => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark')
@@ -738,6 +764,8 @@ const labels = LABELS
   .xx-bar {
     --xx-fg: lab(2.75 0 0);
     --xx-mute: lab(40.84 0 0);
+    /* always the theme's: the lifted lens below has a theme-coloured body */
+    --xx-theme-fg: var(--xx-fg);
     position: relative;
     display: flex;
     align-items: center;
@@ -785,7 +813,7 @@ const labels = LABELS
     gap: 0.5rem;
     min-width: 0;
     padding: 0.25rem 0;
-    border-radius: 999px;
+    border-radius: 8px;
     color: inherit;
     text-decoration: none;
   }
@@ -806,36 +834,42 @@ const labels = LABELS
     white-space: nowrap;
   }
 
-  /* The pane of liquid glass, as the console's LiquidGlass draws it. */
+  /*
+   * The pane of glass, as the console's .dock-glass draws it (new-api
+   * web/src/styles/site-bar.css; change them together), measured on the real
+   * macOS Dock. There is no milky core, no band of blur and no shadow: the
+   * page shows through, a little richer, and only the rim bends it (glass.ts).
+   * What sets it off is a thin tint, a faint glow inside, white lines along
+   * the top and bottom that fade at the corners and dark lines down the sides.
+   * These defaults are for a bright page; backdrop.ts follows the real one.
+   */
   .xx-glass {
+    --glass-radius: 12px;
+    --glass-tint: rgb(153 153 153 / 0.25);
+    --glass-side: 0.18;
+    --glass-edge: 0.73;
+    --glass-glow: 0.22;
     position: absolute;
     top: 50%;
     left: 0;
     height: 2.5rem;
-    border-radius: 999px;
+    border-radius: var(--glass-radius);
     pointer-events: auto;
     transform: translate3d(0, -50%, 0);
-    background: rgb(255 255 255 / 0.12);
-    backdrop-filter: blur(12px) saturate(1.8);
-    -webkit-backdrop-filter: blur(12px) saturate(1.8);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.85),
-      0 0 0 0.5px rgb(0 0 0 / 0.09),
-      0 6px 20px -6px rgb(0 0 0 / 0.2),
-      0 2px 5px -2px rgb(0 0 0 / 0.08);
+    background-color: var(--glass-tint);
+    box-shadow: inset 0 0 4px rgb(255 255 255 / var(--glass-glow));
+    /* prefixed first: the build keeps only the last of the two */
+    -webkit-backdrop-filter: blur(1px) saturate(1.35);
+    backdrop-filter: blur(1px) saturate(1.35);
     transition:
-      background-color 0.5s,
-      box-shadow 0.5s;
+      background-color 0.28s,
+      box-shadow 0.28s;
   }
-  .xx-glass::after {
-    content: '';
-    position: absolute;
-    inset: 6px;
-    z-index: -1;
-    border-radius: inherit;
-    background: rgb(255 255 255 / 0.68);
-    filter: blur(6px);
-    pointer-events: none;
+  :root[data-theme='dark'] .xx-glass {
+    --glass-tint: rgb(52 61 62 / 0.29);
+    --glass-side: 0.45;
+    --glass-edge: 0.24;
+    --glass-glow: 0.14;
   }
   .xx-glass::before {
     content: '';
@@ -843,14 +877,21 @@ const labels = LABELS
     inset: 0;
     padding: 1px;
     border-radius: inherit;
-    background: linear-gradient(
-      135deg,
-      rgb(255 255 255 / 0.95),
-      rgb(255 255 255 / 0.35) 28%,
-      rgb(255 255 255 / 0.08) 50%,
-      rgb(255 255 255 / 0.35) 72%,
-      rgb(255 255 255 / 0.8)
-    );
+    background:
+      linear-gradient(
+        90deg,
+        rgb(0 0 0 / var(--glass-side)) 0,
+        transparent 2px,
+        transparent calc(100% - 2px),
+        rgb(0 0 0 / var(--glass-side)) 100%
+      ),
+      linear-gradient(
+        90deg,
+        transparent calc(var(--glass-radius) * 0.25),
+        rgb(255 255 255 / var(--glass-edge)) var(--glass-radius),
+        rgb(255 255 255 / var(--glass-edge)) calc(100% - var(--glass-radius)),
+        transparent calc(100% - var(--glass-radius) * 0.25)
+      );
     -webkit-mask:
       linear-gradient(#000 0 0) content-box exclude,
       linear-gradient(#000 0 0);
@@ -859,33 +900,77 @@ const labels = LABELS
       linear-gradient(#000 0 0);
     pointer-events: none;
   }
-  :root[data-theme='dark'] .xx-glass {
-    background: rgb(255 255 255 / 0.04);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.14),
-      0 0 0 0.5px rgb(0 0 0 / 0.6),
-      0 8px 26px -6px rgb(0 0 0 / 0.65);
-  }
-  :root[data-theme='dark'] .xx-glass::after {
-    background: rgb(10 10 10 / 0.45);
-  }
-  :root[data-theme='dark'] .xx-glass::before {
-    background: linear-gradient(
-      135deg,
-      rgb(255 255 255 / 0.45),
-      rgb(255 255 255 / 0.12) 28%,
-      rgb(255 255 255 / 0.03) 50%,
-      rgb(255 255 255 / 0.12) 72%,
-      rgb(255 255 255 / 0.32)
-    );
-  }
   @media (prefers-reduced-transparency: reduce) {
+    /* !important: glass.ts sets its filter on the element, and the setting can
+       change while the page is open */
     .xx-glass {
-      background: var(--sl-color-black);
-      backdrop-filter: none;
+      background-color: var(--sl-color-black);
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
     }
-    .xx-glass::after {
-      display: none;
+  }
+
+  /*
+   * The words on the bar take the colour that reads over what is under them
+   * (lib/site-bar/backdrop.ts). A word across light and dark gets a soft plate
+   * of the opposite colour. Without data-ink they keep the theme's colour.
+   * Setting the two colour variables too carries it through every state of the
+   * links (hover, current, dragged) and the icons' own rules below.
+   */
+  [data-site-bar] [data-ink] {
+    transition:
+      color 0.18s,
+      text-shadow 0.18s;
+  }
+  [data-site-bar] [data-site-lens][data-ink] {
+    transition:
+      color 0.18s,
+      opacity 0.3s,
+      background-color 0.3s,
+      box-shadow 0.3s;
+  }
+  [data-site-bar] [data-ink='light'] {
+    --xx-fg: #fff;
+    --xx-mute: #fff;
+    color: #fff;
+    text-shadow: 0 0 4px rgb(0 0 0 / 0.35);
+  }
+  [data-site-bar] [data-ink='dark'] {
+    --xx-fg: #0c0c0f;
+    --xx-mute: #0c0c0f;
+    color: #0c0c0f;
+    text-shadow: 0 0 4px rgb(255 255 255 / 0.35);
+  }
+  [data-site-bar] [data-site-lens][data-ink] {
+    text-shadow: none;
+  }
+  [data-site-bar] :is(a, button)[data-ink]:not([aria-current]):hover {
+    background-color: color-mix(in srgb, currentColor 13%, transparent);
+  }
+  [data-site-bar] [data-plate] {
+    position: relative;
+    isolation: isolate;
+  }
+  [data-site-bar] [data-plate]::after {
+    content: '';
+    position: absolute;
+    inset: 3px 0;
+    z-index: -1;
+    border-radius: 999px;
+    filter: blur(6px);
+    pointer-events: none;
+  }
+  [data-site-bar] [data-plate][data-ink='light']::after {
+    background: rgb(0 0 0 / 0.55);
+  }
+  [data-site-bar] [data-plate][data-ink='dark']::after {
+    background: rgb(255 255 255 / 0.7);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .xx-glass,
+    [data-site-bar] [data-ink],
+    [data-site-bar] [data-site-lens][data-ink] {
+      transition: none;
     }
   }
 
@@ -894,7 +979,7 @@ const labels = LABELS
     width: 1px;
     height: 1rem;
     flex-shrink: 0;
-    background: color-mix(in srgb, var(--xx-fg) 12%, transparent);
+    background: color-mix(in srgb, currentColor 28%, transparent);
   }
   .xx-seam {
     position: absolute;
@@ -920,7 +1005,7 @@ const labels = LABELS
     align-items: center;
     height: 2.25rem;
     padding: 0 0.75rem;
-    border-radius: 999px;
+    border-radius: 8px;
     color: var(--xx-mute);
     font-size: 0.875rem;
     font-weight: 500;
@@ -938,26 +1023,15 @@ const labels = LABELS
     inset-block: 0;
     left: 0;
     width: 0;
-    border-radius: 999px;
+    border-radius: 8px;
     opacity: 0;
     pointer-events: none;
     overflow: hidden;
-    background: rgb(255 255 255 / 0.7);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.95),
-      0 0 0 0.5px rgb(0 0 0 / 0.06),
-      0 1px 4px -1px rgb(0 0 0 / 0.16);
+    background: color-mix(in srgb, currentColor 13%, transparent);
     transition:
       opacity 0.3s,
       background-color 0.3s,
       box-shadow 0.3s;
-  }
-  :root[data-theme='dark'] .xx-lens {
-    background: rgb(255 255 255 / 0.13);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.2),
-      0 0 0 0.5px rgb(0 0 0 / 0.4),
-      0 2px 6px -2px rgb(0 0 0 / 0.5);
   }
   /* Held and dragged (as in the console): sideways it is ours, up and down still scrolls */
   .xx-links {
@@ -1007,7 +1081,7 @@ const labels = LABELS
     align-items: center;
     height: 2.25rem;
     padding: 0 0.75rem;
-    color: var(--xx-fg);
+    color: var(--xx-theme-fg);
     font-size: 0.875rem;
     font-weight: 500;
     white-space: nowrap;
@@ -1023,7 +1097,7 @@ const labels = LABELS
     height: 2.25rem;
     padding: 0;
     border: 0;
-    border-radius: 999px;
+    border-radius: 8px;
     background: none;
     color: var(--xx-fg);
     cursor: pointer;
@@ -1105,12 +1179,16 @@ const labels = LABELS
     height: 2rem;
     margin: 0 0.125rem;
     padding: 0 0.875rem;
-    border-radius: 999px;
-    background: var(--xx-fg);
-    color: var(--sl-color-black);
+    border-radius: 8px;
+    background: #0b0b0b;
+    color: #fff;
     font-size: 0.75rem;
     font-weight: 500;
     text-decoration: none;
+  }
+  :root[data-theme='dark'] .xx-sign-in {
+    background: #fff;
+    color: #0b0b0b;
   }
   .xx-sign-in:hover {
     opacity: 0.9;
@@ -1149,7 +1227,7 @@ const labels = LABELS
     height: 2.25rem;
     padding: 0;
     border: 0;
-    border-radius: 999px;
+    border-radius: 8px;
     background: none;
     color: var(--xx-fg);
     justify-content: center;
