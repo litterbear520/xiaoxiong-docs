@@ -203,7 +203,7 @@ const labels = LABELS
 </script>
 
 <script>
-  import { BarInk } from '../lib/site-bar/backdrop'
+  import { BarInk } from '../lib/site-bar/bar-ink'
   import { mountGlass } from '../lib/site-bar/glass'
   import { LABELS, type LanguageCode } from '../lib/site-bar/labels'
   import { Lens, lensAt, nearestLink } from '../lib/site-bar/lens'
@@ -813,7 +813,7 @@ const labels = LABELS
     gap: 0.5rem;
     min-width: 0;
     padding: 0.25rem 0;
-    border-radius: 8px;
+    border-radius: 999px;
     color: inherit;
     text-decoration: none;
   }
@@ -836,19 +836,20 @@ const labels = LABELS
 
   /*
    * The pane of glass, as the console's .dock-glass draws it (new-api
-   * web/src/styles/site-bar.css; change them together), measured on the real
-   * macOS Dock. There is no milky core, no band of blur and no shadow: the
-   * page shows through, a little richer, and only the rim bends it (glass.ts).
-   * What sets it off is a thin tint, a faint glow inside, white lines along
-   * the top and bottom that fade at the corners and dark lines down the sides.
-   * These defaults are for a bright page; backdrop.ts follows the real one.
+   * web/src/styles/site-bar.css; change them together), after the real macOS
+   * Dock. There is no milky core and no band of blur: the page shows through,
+   * a little richer, and only the rim bends it (glass.ts). What sets it off is
+   * a thin tint, a faint glow inside, white lines along the top and bottom that
+   * fade towards the ends and dark lines at the ends. The dark values are
+   * measured; bright pages get a lighter tint with a faint outline and shadow.
+   * These defaults are for a bright page; bar-ink.ts follows the real one.
    */
   .xx-glass {
-    --glass-radius: 12px;
-    --glass-tint: rgb(153 153 153 / 0.25);
-    --glass-side: 0.18;
-    --glass-edge: 0.73;
-    --glass-glow: 0.22;
+    --glass-radius: 20px;
+    --glass-tint: rgb(246 248 251 / 0.16);
+    --glass-side: 0.1;
+    --glass-outline: 0.1;
+    --glass-shadow: 0.2;
     position: absolute;
     top: 50%;
     left: 0;
@@ -857,7 +858,10 @@ const labels = LABELS
     pointer-events: auto;
     transform: translate3d(0, -50%, 0);
     background-color: var(--glass-tint);
-    box-shadow: inset 0 0 4px rgb(255 255 255 / var(--glass-glow));
+    box-shadow:
+      inset 0 0 4px rgb(255 255 255 / 0.14),
+      0 0 0 0.5px rgb(0 0 0 / var(--glass-outline)),
+      0 4px 14px -6px rgb(0 0 0 / var(--glass-shadow));
     /* prefixed first: the build keeps only the last of the two */
     -webkit-backdrop-filter: blur(1px) saturate(1.35);
     backdrop-filter: blur(1px) saturate(1.35);
@@ -868,8 +872,8 @@ const labels = LABELS
   :root[data-theme='dark'] .xx-glass {
     --glass-tint: rgb(52 61 62 / 0.29);
     --glass-side: 0.45;
-    --glass-edge: 0.24;
-    --glass-glow: 0.14;
+    --glass-outline: 0;
+    --glass-shadow: 0;
   }
   .xx-glass::before {
     content: '';
@@ -888,8 +892,8 @@ const labels = LABELS
       linear-gradient(
         90deg,
         transparent calc(var(--glass-radius) * 0.25),
-        rgb(255 255 255 / var(--glass-edge)) var(--glass-radius),
-        rgb(255 255 255 / var(--glass-edge)) calc(100% - var(--glass-radius)),
+        rgb(255 255 255 / 0.24) var(--glass-radius),
+        rgb(255 255 255 / 0.24) calc(100% - var(--glass-radius)),
         transparent calc(100% - var(--glass-radius) * 0.25)
       );
     -webkit-mask:
@@ -912,7 +916,7 @@ const labels = LABELS
 
   /*
    * The words on the bar take the colour that reads over what is under them
-   * (lib/site-bar/backdrop.ts). A word across light and dark gets a soft plate
+   * (lib/site-bar/bar-ink.ts). A word across light and dark gets a soft plate
    * of the opposite colour. Without data-ink they keep the theme's colour.
    * Setting the two colour variables too carries it through every state of the
    * links (hover, current, dragged) and the icons' own rules below.
@@ -1005,7 +1009,7 @@ const labels = LABELS
     align-items: center;
     height: 2.25rem;
     padding: 0 0.75rem;
-    border-radius: 8px;
+    border-radius: 999px;
     color: var(--xx-mute);
     font-size: 0.875rem;
     font-weight: 500;
@@ -1023,7 +1027,7 @@ const labels = LABELS
     inset-block: 0;
     left: 0;
     width: 0;
-    border-radius: 8px;
+    border-radius: 999px;
     opacity: 0;
     pointer-events: none;
     overflow: hidden;
@@ -1097,7 +1101,7 @@ const labels = LABELS
     height: 2.25rem;
     padding: 0;
     border: 0;
-    border-radius: 8px;
+    border-radius: 999px;
     background: none;
     color: var(--xx-fg);
     cursor: pointer;
@@ -1179,7 +1183,7 @@ const labels = LABELS
     height: 2rem;
     margin: 0 0.125rem;
     padding: 0 0.875rem;
-    border-radius: 8px;
+    border-radius: 999px;
     background: #0b0b0b;
     color: #fff;
     font-size: 0.75rem;
@@ -1227,7 +1231,7 @@ const labels = LABELS
     height: 2.25rem;
     padding: 0;
     border: 0;
-    border-radius: 8px;
+    border-radius: 999px;
     background: none;
     color: var(--xx-fg);
     justify-content: center;

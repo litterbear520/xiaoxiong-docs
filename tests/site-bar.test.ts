@@ -228,23 +228,21 @@ describe('tintFor', () => {
     expect(tint.color).toEqual([52, 61, 62])
     expect(tint.alpha).toBeCloseTo(0.29)
     expect(tint.side).toBeCloseTo(0.45)
-    expect(tint.edge).toBeCloseTo(0.24)
-    expect(tint.glow).toBeCloseTo(0.14)
+    expect(tint.outline).toBe(0)
   })
 
   it('over a light page turns light, whatever the theme', () => {
     const tint = tintFor(0.9)
-    expect(tint.color).toEqual([153, 153, 153])
-    expect(tint.alpha).toBeCloseTo(0.25)
-    expect(tint.side).toBeCloseTo(0.18)
-    expect(tint.edge).toBeCloseTo(0.73)
-    expect(tint.glow).toBeCloseTo(0.22)
+    expect(tint.color).toEqual([246, 248, 251])
+    expect(tint.alpha).toBeCloseTo(0.16)
+    expect(tint.side).toBeCloseTo(0.1)
+    expect(tint.outline).toBeCloseTo(0.1)
   })
 
   it('between the two moves smoothly', () => {
     const steps = [0.1, 0.2, 0.3, 0.4, 0.5].map((lum) => tintFor(lum).alpha)
     for (let i = 1; i < steps.length; i++) expect(steps[i]).toBeLessThanOrEqual(steps[i - 1])
-    expect(steps[2]).toBeGreaterThan(0.25)
+    expect(steps[2]).toBeGreaterThan(0.16)
     expect(steps[2]).toBeLessThan(0.29)
   })
 })
@@ -259,23 +257,23 @@ describe('chooseInk', () => {
     // white and black read equally at a luminance of about 0.18
     const onEdge = [0.2]
     expect(chooseInk(onEdge).ink).toBe('dark')
-    expect(chooseInk(onEdge, 'light').ink).toBe('light')
-    expect(chooseInk([0.16], 'dark').ink).toBe('dark')
+    expect(chooseInk(onEdge, { ink: 'light' }).ink).toBe('light')
+    expect(chooseInk([0.16], { ink: 'dark' }).ink).toBe('dark')
   })
 
   it('does not flicker while scrolling back and forth over the edge', () => {
     let ink = chooseInk([0.05]).ink
     const seen = new Set([ink])
     for (let i = 0; i < 40; i++) {
-      ink = chooseInk([0.18 + Math.sin(i) * 0.02], ink).ink
+      ink = chooseInk([0.18 + Math.sin(i) * 0.02], { ink }).ink
       seen.add(ink)
     }
     expect(seen.size).toBe(1)
   })
 
   it('does change once the other colour reads clearly better', () => {
-    expect(chooseInk([0.7], 'light').ink).toBe('dark')
-    expect(chooseInk([0.02], 'dark').ink).toBe('light')
+    expect(chooseInk([0.7], { ink: 'light' }).ink).toBe('dark')
+    expect(chooseInk([0.02], { ink: 'dark' }).ink).toBe('light')
   })
 
   it('puts a plate under a word across light and dark', () => {
@@ -285,7 +283,7 @@ describe('chooseInk', () => {
 
   it('on the docs\' own pages picks what the first frame guessed', () => {
     // #fcfcfb and #151515 under the glass; SiteBar.astro's inline script guesses from the theme
-    const light = mix([252, 252, 251], tintFor(luminance([252, 252, 251])).color, 0.25)
+    const light = mix([252, 252, 251], tintFor(luminance([252, 252, 251])).color, 0.16)
     const dark = mix([21, 21, 21], tintFor(luminance([21, 21, 21])).color, 0.29)
     expect(chooseInk([luminance(light)]).ink).toBe('dark')
     expect(chooseInk([luminance(dark)]).ink).toBe('light')
@@ -339,7 +337,7 @@ describe('dockRim', () => {
 })
 
 describe('refractionMap with the Dock rim', () => {
-  const bar = { width: 161, height: 40, radius: 12, rim: dockRim(40) }
+  const bar = { width: 161, height: 40, radius: 20, rim: dockRim(40) }
   const map = refractionMap(bar)
   /** The x and y shift a map gives one pixel, from -127 to 127. */
   const shiftAt = (m: RefractionMap, x: number, y: number) => {
@@ -347,15 +345,17 @@ describe('refractionMap with the Dock rim', () => {
     return { x: m.pixels[i] - 128, y: m.pixels[i + 1] - 128 }
   }
 
-  it('moves nothing past the 6.4px band, around the corners too', () => {
-    for (let y = 0; y < bar.height; y++) {
-      for (let x = 0; x < bar.width; x++) {
-        const cornerX = Math.abs(x + 0.5 - bar.width / 2) - (bar.width / 2 - 12)
-        const cornerY = Math.abs(y + 0.5 - bar.height / 2) - (bar.height / 2 - 12)
-        const depth = cornerX > 0 && cornerY > 0 ? 12 - Math.hypot(cornerX, cornerY) : Math.min(12 - cornerX, 12 - cornerY)
-        if (depth >= 6.4) expect(shiftAt(map, x, y)).toEqual({ x: 0, y: 0 })
+  it('moves nothing past the 6.4px band along its edges', () => {
+    for (let x = 20; x < 141; x++) {
+      for (let y = 7; y < 33; y++) {
+        expect(shiftAt(map, x, y)).toEqual({ x: 0, y: 0 })
       }
     }
+  })
+
+  it('moves nothing past the band inside a round end', () => {
+    // about 9px from the end's centre on the diagonal, 11px in from its arc
+    expect(shiftAt(map, 13, 13)).toEqual({ x: 0, y: 0 })
   })
 
   it('bends the top and the bottom alike', () => {
