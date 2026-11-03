@@ -13,7 +13,6 @@ import {
 } from '../src/lib/site-bar/state'
 import { LABELS } from '../src/lib/site-bar/labels'
 import { lensAt, nearestLink } from '../src/lib/site-bar/lens'
-import { chooseInk, composite, contrast, luminance, mix, tintFor, type Layer } from '../src/lib/site-bar/backdrop'
 import { dockRim, refractionMap, type RefractionMap } from '../src/lib/site-bar/refraction'
 
 const zh = LABELS.zhCN
@@ -220,100 +219,8 @@ describe('the dragged lens', () => {
   })
 })
 
-// The console's numbers (new-api web/src/components/site-bar/__tests__/backdrop.test.ts
-// and web/src/lib/__tests__/liquid-glass.test.ts): both bars must stay the same glass.
-describe('tintFor', () => {
-  it('over a dark page is the tint measured on the Dock', () => {
-    const tint = tintFor(0.02)
-    expect(tint.color).toEqual([52, 61, 62])
-    expect(tint.alpha).toBeCloseTo(0.29)
-    expect(tint.side).toBeCloseTo(0.45)
-    expect(tint.outline).toBe(0)
-  })
-
-  it('over a light page turns light, whatever the theme', () => {
-    const tint = tintFor(0.9)
-    expect(tint.color).toEqual([246, 248, 251])
-    expect(tint.alpha).toBeCloseTo(0.16)
-    expect(tint.side).toBeCloseTo(0.1)
-    expect(tint.outline).toBeCloseTo(0.1)
-  })
-
-  it('between the two moves smoothly', () => {
-    const steps = [0.1, 0.2, 0.3, 0.4, 0.5].map((lum) => tintFor(lum).alpha)
-    for (let i = 1; i < steps.length; i++) expect(steps[i]).toBeLessThanOrEqual(steps[i - 1])
-    expect(steps[2]).toBeGreaterThan(0.16)
-    expect(steps[2]).toBeLessThan(0.29)
-  })
-})
-
-describe('chooseInk', () => {
-  it('gives white words on a dark page, black words on a light one', () => {
-    expect(chooseInk([0.02, 0.03]).ink).toBe('light')
-    expect(chooseInk([0.8, 0.9]).ink).toBe('dark')
-  })
-
-  it('around the point where both read alike, keeps the colour a word has', () => {
-    // white and black read equally at a luminance of about 0.18
-    const onEdge = [0.2]
-    expect(chooseInk(onEdge).ink).toBe('dark')
-    expect(chooseInk(onEdge, { ink: 'light' }).ink).toBe('light')
-    expect(chooseInk([0.16], { ink: 'dark' }).ink).toBe('dark')
-  })
-
-  it('does not flicker while scrolling back and forth over the edge', () => {
-    let ink = chooseInk([0.05]).ink
-    const seen = new Set([ink])
-    for (let i = 0; i < 40; i++) {
-      ink = chooseInk([0.18 + Math.sin(i) * 0.02], { ink }).ink
-      seen.add(ink)
-    }
-    expect(seen.size).toBe(1)
-  })
-
-  it('does change once the other colour reads clearly better', () => {
-    expect(chooseInk([0.7], { ink: 'light' }).ink).toBe('dark')
-    expect(chooseInk([0.02], { ink: 'dark' }).ink).toBe('light')
-  })
-
-  it('puts a plate under a word across light and dark', () => {
-    expect(chooseInk([0.02, 0.5]).plate).toBe(true)
-    expect(chooseInk([0.02, 0.05]).plate).toBe(false)
-  })
-
-  it('on the docs\' own pages picks what the first frame guessed', () => {
-    // #fcfcfb and #151515 under the glass; SiteBar.astro's inline script guesses from the theme
-    const light = mix([252, 252, 251], tintFor(luminance([252, 252, 251])).color, 0.16)
-    const dark = mix([21, 21, 21], tintFor(luminance([21, 21, 21])).color, 0.29)
-    expect(chooseInk([luminance(light)]).ink).toBe('dark')
-    expect(chooseInk([luminance(dark)]).ink).toBe('light')
-  })
-})
-
-describe('composite', () => {
-  const WHITE = [255, 255, 255] as const
-  const BLACK = [0, 0, 0] as const
-  const layer = (color: Layer['color'], alpha = 1): Layer => ({ color, alpha })
-
-  it('lets the top opaque layer win', () => {
-    expect(composite([layer(BLACK), layer(WHITE)], WHITE)).toEqual([0, 0, 0])
-  })
-
-  it('lets the layer under a see-through one show', () => {
-    expect(composite([layer(BLACK, 0.5), layer(WHITE)], WHITE)).toEqual([127.5, 127.5, 127.5])
-  })
-
-  it('falls back with nothing to read', () => {
-    expect(composite([], [20, 20, 24])).toEqual([20, 20, 24])
-    expect(composite([layer(BLACK, 0.5)], WHITE)).toEqual([127.5, 127.5, 127.5])
-  })
-
-  it('works with WCAG contrast and mix', () => {
-    expect(contrast(luminance(WHITE), luminance(BLACK))).toBeCloseTo(21)
-    expect(mix(WHITE, BLACK, 0.5)).toEqual([127.5, 127.5, 127.5])
-  })
-})
-
+// The console's numbers (new-api web/src/lib/__tests__/liquid-glass.test.ts): both bars must
+// stay the same glass.
 describe('dockRim', () => {
   it('is the curve measured on the 75px Dock: 20px at the edge, gone 12px in', () => {
     const rim = dockRim(75)

@@ -20,12 +20,12 @@ const labels = LABELS
 
 <div class="xx-bar" data-site-bar data-state="split">
   <div class="xx-glass" aria-hidden="true"></div>
-  <span class="xx-seam" aria-hidden="true" data-bar-word="line"></span>
+  <span class="xx-seam" aria-hidden="true"></span>
 
   <div class="xx-brand">
     <a class="xx-brand-link" href="/">
       <img src="/brand/logo.png" alt="" width="24" height="24" />
-      <span data-brand-name data-bar-word>小熊API</span>
+      <span data-brand-name>小熊API</span>
     </a>
   </div>
 
@@ -40,7 +40,7 @@ const labels = LABELS
         ))
       }
     </nav>
-    <span class="xx-divider xx-wide" aria-hidden="true" data-bar-word="line"></span>
+    <span class="xx-divider xx-wide" aria-hidden="true"></span>
 
     <div class="xx-search"><Search /></div>
 
@@ -121,16 +121,6 @@ const labels = LABELS
   ;(() => {
     const bar = document.querySelector('[data-site-bar]')
     if (!bar) return
-    // The words as they read on this theme's plain page, which is what is
-    // under them nearly always: the cross-fade from the console's bar starts
-    // from this frame, and the module script's reading comes a little later.
-    // (Before anything below reads the layout: set later, they would fade.)
-    if (!matchMedia('(prefers-reduced-transparency: reduce)').matches) {
-      const ink = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'
-      for (const el of bar.querySelectorAll('[data-bar-word],[data-site-link],[data-site-lens],.xx-dock > button:not([data-bar-skip]),site-search > button')) {
-        el.dataset.ink = ink
-      }
-    }
     let saved = null
     let note = null
     try {
@@ -203,7 +193,6 @@ const labels = LABELS
 </script>
 
 <script>
-  import { BarInk } from '../lib/site-bar/bar-ink'
   import { mountGlass } from '../lib/site-bar/glass'
   import { LABELS, type LanguageCode } from '../lib/site-bar/labels'
   import { Lens, lensAt, nearestLink } from '../lib/site-bar/lens'
@@ -260,7 +249,6 @@ const labels = LABELS
   const nav = bar.querySelector<HTMLElement>('.xx-links')!
   const lensEl = bar.querySelector<HTMLElement>('.xx-lens')!
   const status = readJson<Record<string, unknown>>(STATUS_KEY)
-  const barInk = new BarInk({ bar, glass })
 
   // --- words and links, in the reader's language and the admin's switches
   function applyLanguage(language: LanguageCode) {
@@ -272,15 +260,12 @@ const labels = LABELS
     for (const el of bar.querySelectorAll<HTMLElement>('[data-la]')) {
       el.setAttribute('aria-label', words[el.dataset.la as keyof typeof words] ?? '')
     }
-    // the new links carry on in the colour the old ones had
-    const ink = nav.querySelector<HTMLElement>('[data-site-link]')?.dataset.ink
     nav.replaceChildren(
       lensEl,
       ...siteLinks(status, words).map((link, index) => {
         const a = document.createElement('a')
         a.href = link.href
         a.dataset.siteLink = ''
-        if (ink) a.dataset.ink = ink
         a.draggable = false
         if (link.current) a.setAttribute('aria-current', 'page')
         a.style.setProperty('--site-vt', `site-link-${index}`)
@@ -308,7 +293,6 @@ const labels = LABELS
       )
     }
     updateThemeLabel()
-    barInk.ask()
   }
 
   // --- the lens under 文档, or under the link clicked to leave for
@@ -343,7 +327,6 @@ const labels = LABELS
     let state = 'moving'
     if (q <= 0) state = 'split'
     if (q >= 1) state = 'assembled'
-    if (bar.dataset.state !== state) barInk.ask()
     bar.dataset.state = state
     if (!geometry) return
     const g = geometry
@@ -389,7 +372,6 @@ const labels = LABELS
     measure()
     paint(morph.value)
     lens.slide(litLink(), lensNote(lensRaw, document.referrer, arrival))
-    barInk.newPage()
     // Arrived with the bar together: open it once the cross-fade is over (or
     // at once where there is none).
     const opened = morph
@@ -547,7 +529,6 @@ const labels = LABELS
     'scroll',
     () => {
       const top = window.scrollY
-      barInk.ask()
       morph?.scroll(lastTop, top)
       lastTop = top
     },
@@ -557,19 +538,12 @@ const labels = LABELS
     measure()
     paint(together())
     lens.place(litLink())
-    barInk.ask()
   }).observe(dock)
   new ResizeObserver(() => {
     measure()
     paint(together())
-    barInk.ask()
   }).observe(bar)
   mountGlass(glass)
-  // Anyone asking for less transparency has the opaque pane: nothing to read.
-  const solid = matchMedia('(prefers-reduced-transparency: reduce)')
-  const holdInk = () => barInk.hold(solid.matches)
-  holdInk()
-  solid.addEventListener('change', holdInk)
 
   // --- theme: the console's setting, flipped like the console's button
   const currentTheme = (): Theme => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark')
@@ -841,8 +815,8 @@ const labels = LABELS
    * a little richer, and only the rim bends it (glass.ts). What sets it off is
    * a thin tint, a faint glow inside, white lines along the top and bottom that
    * fade towards the ends and dark lines at the ends. The dark values are
-   * measured; bright pages get a lighter tint with a faint outline and shadow.
-   * These defaults are for a bright page; bar-ink.ts follows the real one.
+   * measured; the light theme gets a lighter tint with a faint outline and
+   * shadow. It stays the same whatever passes under it, so the page shows through.
    */
   .xx-glass {
     --glass-radius: 20px;
@@ -915,65 +889,52 @@ const labels = LABELS
   }
 
   /*
-   * The words on the bar take the colour that reads over what is under them
-   * (lib/site-bar/bar-ink.ts). A word across light and dark gets a soft plate
-   * of the opposite colour. Without data-ink they keep the theme's colour.
-   * Setting the two colour variables too carries it through every state of the
-   * links (hover, current, dragged) and the icons' own rules below.
+   * The words stay one colour for each theme, whatever passes under them, like
+   * anything behind glass (new-api web/src/styles/site-bar.css; change them
+   * together). Setting the two colour variables too carries it through every
+   * state of the links (hover, current, dragged) and the icons' own rules below.
    */
-  [data-site-bar] [data-ink] {
-    transition:
-      color 0.18s,
-      text-shadow 0.18s;
+  [data-site-bar] {
+    --bar-word: #0c0c0f;
+    --bar-halo: rgb(255 255 255 / 0.35);
   }
-  [data-site-bar] [data-site-lens][data-ink] {
-    transition:
-      color 0.18s,
-      opacity 0.3s,
-      background-color 0.3s,
-      box-shadow 0.3s;
+  :root[data-theme='dark'] [data-site-bar] {
+    --bar-word: #fff;
+    --bar-halo: rgb(0 0 0 / 0.35);
   }
-  [data-site-bar] [data-ink='light'] {
-    --xx-fg: #fff;
-    --xx-mute: #fff;
-    color: #fff;
-    text-shadow: 0 0 4px rgb(0 0 0 / 0.35);
+  [data-site-bar]
+    :is(
+      [data-brand-name],
+      [data-site-link],
+      [data-site-lens],
+      .xx-seam,
+      .xx-divider,
+      .xx-dock > button:not([data-bar-skip]),
+      site-search > button
+    ) {
+    --xx-fg: var(--bar-word);
+    --xx-mute: var(--bar-word);
+    color: var(--bar-word);
   }
-  [data-site-bar] [data-ink='dark'] {
-    --xx-fg: #0c0c0f;
-    --xx-mute: #0c0c0f;
-    color: #0c0c0f;
-    text-shadow: 0 0 4px rgb(255 255 255 / 0.35);
+  [data-site-bar]
+    :is(
+      [data-brand-name],
+      [data-site-link],
+      .xx-dock > button:not([data-bar-skip]),
+      site-search > button
+    ) {
+    text-shadow: 0 0 4px var(--bar-halo);
   }
-  [data-site-bar] [data-site-lens][data-ink] {
-    text-shadow: none;
-  }
-  [data-site-bar] :is(a, button)[data-ink]:not([aria-current]):hover {
+  [data-site-bar]
+    :is(
+      [data-site-link],
+      .xx-dock > button:not([data-bar-skip]),
+      site-search > button
+    ):not([aria-current]):hover {
     background-color: color-mix(in srgb, currentColor 13%, transparent);
   }
-  [data-site-bar] [data-plate] {
-    position: relative;
-    isolation: isolate;
-  }
-  [data-site-bar] [data-plate]::after {
-    content: '';
-    position: absolute;
-    inset: 3px 0;
-    z-index: -1;
-    border-radius: 999px;
-    filter: blur(6px);
-    pointer-events: none;
-  }
-  [data-site-bar] [data-plate][data-ink='light']::after {
-    background: rgb(0 0 0 / 0.55);
-  }
-  [data-site-bar] [data-plate][data-ink='dark']::after {
-    background: rgb(255 255 255 / 0.7);
-  }
   @media (prefers-reduced-motion: reduce) {
-    .xx-glass,
-    [data-site-bar] [data-ink],
-    [data-site-bar] [data-site-lens][data-ink] {
+    .xx-glass {
       transition: none;
     }
   }
