@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -311,5 +312,19 @@ describe('refractionMap with the Dock rim', () => {
   it('tells the filter how far the largest shift goes', () => {
     expect(map.scale).toBeGreaterThan(18)
     expect(map.scale).toBeLessThan(21.4)
+  })
+})
+
+describe('the first paint', () => {
+  const config = readFileSync('astro.config.ts', 'utf8')
+  const bar = readFileSync('src/components/SiteBar.astro', 'utf8')
+
+  it('waits for the bar to be whole and its script to have run', () => {
+    expect(config).toMatch(/rel: 'expect',\s*href: '#xx-bar-ready',\s*blocking: 'render'/)
+    const script = bar.indexOf('<script is:inline define:vars')
+    const scriptEnd = bar.indexOf('</script>', script)
+    const ready = bar.indexOf('id="xx-bar-ready"')
+    expect(script).toBeGreaterThan(bar.indexOf('class="xx-dock"'))
+    expect(ready).toBeGreaterThan(scriptEnd)
   })
 })

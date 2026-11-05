@@ -61,6 +61,10 @@ export default defineConfig({
       tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
       disable404Route: true,
       customCss: ['./src/styles/theme.css'],
+      // Safari can paint a page it has only half read, and a view transition
+      // shows that frame: the bar with its icons still missing, its links far
+      // out of place. No first paint until the bar is read (SiteBar.astro).
+      head: [{ tag: 'link', attrs: { rel: 'expect', href: '#xx-bar-ready', blocking: 'render' } }],
       components: {
         PageTitle: './src/components/PageTitle.astro',
         Sidebar: './src/components/Sidebar.astro',

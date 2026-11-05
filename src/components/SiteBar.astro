@@ -191,6 +191,8 @@ const labels = LABELS
     }
   })()
 </script>
+{/* The first paint waits for this (astro.config.ts): the bar is whole by now. */}
+<span id="xx-bar-ready" hidden></span>
 
 <script>
   import { mountGlass } from '../lib/site-bar/glass'
