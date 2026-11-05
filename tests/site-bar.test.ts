@@ -326,6 +326,13 @@ describe('the first paint', () => {
     }
   })
 
+  it('starts no transition from the style computed before the stylesheet', () => {
+    expect(bar).toMatch(/\[data-site-bar\]:not\(\[data-ready\]\) \*\s*\{\s*transition: none;/)
+    const read = bar.indexOf('void getComputedStyle(bar)')
+    expect(read).toBeGreaterThan(-1)
+    expect(bar.indexOf("bar.dataset.ready = ''")).toBeGreaterThan(read)
+  })
+
   it('waits for the bar to be whole and its script to have run', () => {
     expect(config).toMatch(/rel: 'expect',\s*href: '#xx-bar-ready',\s*blocking: 'render'/)
     const script = bar.indexOf('<script is:inline define:vars')

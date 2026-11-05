@@ -252,6 +252,11 @@ const labels = LABELS
   const lensEl = bar.querySelector<HTMLElement>('.xx-lens')!
   const status = readJson<Record<string, unknown>>(STATUS_KEY)
 
+  // The style read comes first: a transition starts from the last style the
+  // browser computed, and that must be the one with the stylesheet in it.
+  void getComputedStyle(bar).color
+  bar.dataset.ready = ''
+
   // --- words and links, in the reader's language and the admin's switches
   function applyLanguage(language: LanguageCode) {
     const words = LABELS[language]
@@ -758,6 +763,13 @@ const labels = LABELS
     border-bottom: 0;
     background: none;
     pointer-events: none;
+  }
+
+  /* On a first visit Safari computes a style before the stylesheet arrives, so
+     without this the links fade from the browser's link blue when it does.
+     Nothing in the bar transitions until its script has started. */
+  [data-site-bar]:not([data-ready]) * {
+    transition: none;
   }
 
   /* The console's colours and face, so both bars match to the pixel. */
