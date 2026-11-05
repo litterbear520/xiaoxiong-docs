@@ -12,7 +12,7 @@ import {
   unreadCount,
 } from '../src/lib/site-bar/state'
 import { LABELS } from '../src/lib/site-bar/labels'
-import { lensAt, nearestLink } from '../src/lib/site-bar/lens'
+import { lensAt, magnifierOpacity, nearestLink } from '../src/lib/site-bar/lens'
 import { dockRim, refractionMap, type RefractionMap } from '../src/lib/site-bar/refraction'
 
 const zh = LABELS.zhCN
@@ -219,6 +219,18 @@ describe('the dragged lens', () => {
     }
     expect(middle(50_000)).toBeLessThanOrEqual(222)
     expect(middle(-50_000)).toBeGreaterThanOrEqual(18)
+  })
+
+  it('keeps the magnifier whole on the way down until the lens stops covering the words', () => {
+    expect(magnifierOpacity(1.2, false)).toBe(1)
+    expect(magnifierOpacity(1.02, false)).toBe(1)
+    expect(magnifierOpacity(1.005, false)).toBe(0)
+  })
+
+  it('brings the magnifier in as the lens swells', () => {
+    expect(magnifierOpacity(1, true)).toBe(0)
+    expect(magnifierOpacity(1.1, true)).toBeCloseTo(0.5)
+    expect(magnifierOpacity(1.2, true)).toBeCloseTo(1)
   })
 
   it('stays inside the bar when swollen, wherever the finger is', () => {
