@@ -195,7 +195,7 @@ const labels = LABELS
 <script>
   import { mountGlass } from '../lib/site-bar/glass'
   import { LABELS, type LanguageCode } from '../lib/site-bar/labels'
-  import { Lens, lensAt, nearestLink } from '../lib/site-bar/lens'
+  import { Lens, SWOLLEN, lensAt, nearestLink } from '../lib/site-bar/lens'
   import { DOCS_BASE } from '../site'
   import { BarMorph } from '../lib/site-bar/morph'
   import {
@@ -431,7 +431,14 @@ const labels = LABELS
   // that does not move is a plain click; Escape, or the browser taking the
   // gesture over (a scroll), puts the lens back.
   const DRAG_SLOP = 6
-  // the links' places are measured once the drag starts: they stay put while it lasts
+  // the least gap, in px, between a dragged lens and the end of the glass
+  const GLASS_MARGIN = 1
+  // the bar's glass, in px from the links' left: the lens stays inside it
+  const glassBounds = (navLeft: number) => {
+    const glass = bar.querySelector('.xx-glass')!.getBoundingClientRect()
+    return { left: glass.left - navLeft + GLASS_MARGIN, right: glass.right - navLeft - GLASS_MARGIN }
+  }
+  // the links' places in the row are measured once the drag starts: they stay put while it lasts
   let press: {
     pointerId: number
     x: number
@@ -439,7 +446,8 @@ const labels = LABELS
     dragging: boolean
     aimed: number
     spans: { left: number; right: number }[]
-    navLeft: number
+    // the lens's middle less the finger's, kept when the press was on the lens
+    grip: number
   } | null = null
   // the browser's own click after a drag is not a click on a link
   let swallowClick = false
@@ -448,28 +456,32 @@ const labels = LABELS
   function aim(index: number | null) {
     siteLinkEls().forEach((a, i) => a.toggleAttribute('data-aimed', i === index))
   }
-  function letGo(pick: boolean) {
+  function letGo(pick: boolean, stillDown = false) {
     const p = press
     press = null
     if (!p?.dragging) return
     swallowClick = true
-    setTimeout(() => (swallowClick = false), 0)
+    const clear = () => setTimeout(() => (swallowClick = false), 0)
+    // Escape comes before the release, and the release's click is the one to swallow
+    if (stillDown) addEventListener('pointerup', clear, { once: true })
+    else clear()
     if (nav.hasPointerCapture(p.pointerId)) nav.releasePointerCapture(p.pointerId)
     delete nav.dataset.dragging
     removeEventListener('keydown', onEscape)
     aim(null)
-    lens.held = false
+    lens.release()
     lens.swellTo(false)
     const link = siteLinkEls()[p.aimed]
     if (pick && link && link !== litLink()) link.click()
     else lens.slide(litLink())
   }
   function onEscape(event: KeyboardEvent) {
-    if (event.key === 'Escape') letGo(false)
+    if (event.key === 'Escape') letGo(false, true)
   }
   nav.addEventListener('pointerdown', (event) => {
     if (!event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return
-    press = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, dragging: false, aimed: -1, spans: [], navLeft: 0 }
+    swallowClick = false
+    press = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, dragging: false, aimed: -1, spans: [], grip: 0 }
   })
   nav.addEventListener('pointermove', (event) => {
     const p = press
@@ -487,7 +499,12 @@ const labels = LABELS
       }
       p.dragging = true
       p.spans = spans()
-      p.navLeft = nav.getBoundingClientRect().left
+      const navLeft = nav.getBoundingClientRect().left
+      const pressedAt = p.x - navLeft
+      const at = lens.span()
+      const onLens = at !== null && pressedAt >= at.left && pressedAt <= at.right
+      p.grip = onLens ? (at.left + at.right) / 2 - pressedAt : 0
+      lens.hold(glassBounds(navLeft), !onLens)
       nav.setPointerCapture(event.pointerId)
       nav.dataset.dragging = ''
       addEventListener('keydown', onEscape)
@@ -495,17 +512,24 @@ const labels = LABELS
       lensEl
         .querySelector('.xx-magnifier')
         ?.replaceChildren(...siteLinkEls().map((a) => Object.assign(document.createElement('span'), { textContent: a.textContent })))
-      lens.held = true
       lens.swellTo(true)
     }
     if (!p.spans.length) return
-    const x = event.clientX - p.navLeft
-    lens.follow(lensAt(p.spans, x))
-    const index = nearestLink(p.spans, x)
+    // read each time: a scroll can move the bar under a still-held finger
+    const navLeft = nav.getBoundingClientRect().left
+    const bounds = glassBounds(navLeft)
+    lens.setBounds(bounds)
+    const to = lensAt(p.spans, event.clientX - navLeft + p.grip, bounds, still.matches ? 1 : SWOLLEN)
+    lens.follow(to)
+    const index = nearestLink(p.spans, (to.left + to.right) / 2)
     if (index !== p.aimed) {
       p.aimed = index
       aim(index)
     }
+  })
+  // a quick flick can leave the links before it has counted as a drag
+  nav.addEventListener('pointerleave', (event) => {
+    if (press && !press.dragging && event.pointerId === press.pointerId) nav.setPointerCapture(event.pointerId)
   })
   nav.addEventListener('pointerup', (event) => {
     if (event.pointerId === press?.pointerId) letGo(true)

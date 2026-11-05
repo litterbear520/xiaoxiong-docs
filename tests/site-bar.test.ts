@@ -212,6 +212,26 @@ describe('the dragged lens', () => {
     expect(middle).toBeLessThan(310)
   })
 
+  it('moves only a little further however far past the ends it is pulled', () => {
+    const middle = (x: number) => {
+      const lens = lensAt(spans, x)
+      return (lens.left + lens.right) / 2
+    }
+    expect(middle(50_000)).toBeLessThanOrEqual(222)
+    expect(middle(-50_000)).toBeGreaterThanOrEqual(18)
+  })
+
+  it('stays inside the bar when swollen, wherever the finger is', () => {
+    const bounds = { left: -2, right: 300 }
+    for (const x of [-50_000, -5, 0, 30, 120, 210, 300, 50_000]) {
+      const lens = lensAt(spans, x, bounds, 1.2)
+      const half = ((lens.right - lens.left) / 2) * 1.2
+      const middle = (lens.left + lens.right) / 2
+      expect(middle - half).toBeGreaterThanOrEqual(bounds.left - 1e-9)
+      expect(middle + half).toBeLessThanOrEqual(bounds.right + 1e-9)
+    }
+  })
+
   it('lets go on the link whose middle is nearest', () => {
     expect(nearestLink(spans, 70)).toBe(0)
     expect(nearestLink(spans, 80)).toBe(1)

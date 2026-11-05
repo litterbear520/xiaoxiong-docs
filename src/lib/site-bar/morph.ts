@@ -32,6 +32,7 @@ export function springTo(
   let x = from
   let v = velocity
   let last = performance.now()
+  let started = false
   let frame = requestAnimationFrame(function step() {
     const now = performance.now()
     const elapsed = (now - last) / 1000
@@ -39,7 +40,10 @@ export function springTo(
     // it half again a usual frame at most: it pauses rather than jumps, and
     // a screen that draws slowly still moves it in real time.
     const dt = Math.min(elapsed, usualFrame * 1.5)
-    usualFrame = Math.max(1 / 240, usualFrame + (Math.min(elapsed, usualFrame * 2) - usualFrame) * 0.1)
+    // from the start to the first frame is no frame's length: it can be any
+    // sliver, and counting it would slow every spring after it
+    if (started) usualFrame = Math.max(1 / 240, usualFrame + (Math.min(elapsed, usualFrame * 2) - usualFrame) * 0.1)
+    started = true
     last = now
     v += (-stiffness * (x - to) - damping * v) * dt
     x += v * dt
