@@ -55,16 +55,16 @@ export default defineConfig({
         { tag: 'link', attrs: { rel: 'apple-touch-icon', href: `${DOCS_BASE}/apple-touch-icon.png` } },
         { tag: 'link', attrs: { rel: 'alternate', type: 'text/plain', title: 'llms.txt', href: `${DOCS_BASE}/llms.txt` } },
         { tag: 'script', content: speculateAfterLoad(SPECULATION_RULES) },
+        // Safari can paint a page it has only half read, and a view transition
+        // shows that frame: the bar with its icons still missing, its links far
+        // out of place. No first paint until the bar is read (SiteBar.astro).
+        { tag: 'link', attrs: { rel: 'expect', href: '#xx-bar-ready', blocking: 'render' } },
       ],
       locales: { root: { label: '简体中文', lang: 'zh-CN' } },
       sidebar: toStarlightSidebar(sidebarSections),
       tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
       disable404Route: true,
       customCss: ['./src/styles/theme.css'],
-      // Safari can paint a page it has only half read, and a view transition
-      // shows that frame: the bar with its icons still missing, its links far
-      // out of place. No first paint until the bar is read (SiteBar.astro).
-      head: [{ tag: 'link', attrs: { rel: 'expect', href: '#xx-bar-ready', blocking: 'render' } }],
       components: {
         PageTitle: './src/components/PageTitle.astro',
         Sidebar: './src/components/Sidebar.astro',

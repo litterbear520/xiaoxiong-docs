@@ -319,6 +319,13 @@ describe('the first paint', () => {
   const config = readFileSync('astro.config.ts', 'utf8')
   const bar = readFileSync('src/components/SiteBar.astro', 'utf8')
 
+  it('keeps one list of head tags, because a second one replaces the first', () => {
+    expect(config.match(/\bhead: \[/g)).toHaveLength(1)
+    for (const tag of ['apple-touch-icon', 'llms.txt', 'speculateAfterLoad(SPECULATION_RULES)', "rel: 'expect'"]) {
+      expect(config).toContain(tag)
+    }
+  })
+
   it('waits for the bar to be whole and its script to have run', () => {
     expect(config).toMatch(/rel: 'expect',\s*href: '#xx-bar-ready',\s*blocking: 'render'/)
     const script = bar.indexOf('<script is:inline define:vars')
