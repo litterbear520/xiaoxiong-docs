@@ -17,7 +17,7 @@ description: 查看当前模型、接口格式和选型建议
 | 阿里巴巴 | `qwen3-coder-next` | Claude、OpenAI |
 | 智谱 | `glm-5` | Claude、OpenAI |
 | MiniMax | `minimax-m2.5`、`minimax-m2.1` | Claude、OpenAI |
-| OpenAI 图片 | `gpt-image-2.5-sunburst`、`gpt-image-2.5-flare`、`gpt-image-2` | 只能用图片接口 |
+| OpenAI 图片 | `gpt-image-2.6-sunburst`、`gpt-image-2.6-flare`、`gpt-image-2.5-sunburst`、`gpt-image-2.5-flare`、`gpt-image-2` | 只能用图片接口 |
 | Google 图片 | `gemini-3.1-flash-image` | Gemini、OpenAI 对话接口，不能用图片接口 |
 
 对话模型的格式取自模型广场。小熊API 会在格式之间转换请求和返回，所以对话模型也能用其他格式调用，例如用 Claude 格式调用 `gpt-6-luna`。图片模型的用法详见 [图片生成](/docs/images/)。
@@ -61,7 +61,7 @@ curl https://api.little-bear.app/v1/models \
 | 写代码、日常工作 | `gpt-6.1-sol` 或 `claude-sonnet-4-6` | Codex 推荐 `gpt-6.1-sol`，Claude Code 推荐 `claude-sonnet-4-6` |
 | 最难的问题 | `gpt-6-astra` 或 `claude-opus-4-6` | 能力强，价格也高 |
 | 用 Gemini CLI 写代码 | `gemini-3.8-flash` | 能力最强的 Gemini 模型，详见 [Gemini CLI](/docs/tools/gemini-cli/) |
-| 生成和编辑图片 | `gpt-image-2.5-sunburst` | 用图片接口调用，详见 [图片生成](/docs/images/) |
+| 生成和编辑图片 | `gpt-image-2.6-sunburst` | 用图片接口调用，详见 [图片生成](/docs/images/) |
 | 在对话中生成图片，或指定图片比例 | `gemini-3.1-flash-image` | 用对话接口或 Gemini 格式调用，详见 [图片生成](/docs/images/) |
 
 上一代 GPT 模型 `gpt-6-sol`、`gpt-5.6-sol`、`gpt-5.6-terra` 和 `gpt-5.6-luna` 通常不需要选。几个 Gemini 模型的区别详见 [Gemini 格式](/docs/gemini/)。

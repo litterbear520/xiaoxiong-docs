@@ -5,7 +5,7 @@ description: 用 API 生成和编辑图片
 
 import { TabItem, Tabs } from '@astrojs/starlight/components'
 
-小熊API 提供 3 个 gpt-image 模型，接口与 OpenAI 的 Images API 相同；另有 Gemini 图片模型 `gemini-3.1-flash-image`，用对话接口调用，详见 [Gemini 图片模型](#gemini-图片模型)。不写代码也能画图，详见 [网页画图](/docs/draw/)。
+小熊API 提供 5 个 gpt-image 模型，接口与 OpenAI 的 Images API 相同；另有 Gemini 图片模型 `gemini-3.1-flash-image`，用对话接口调用，详见 [Gemini 图片模型](#gemini-图片模型)。不写代码也能画图，详见 [网页画图](/docs/draw/)。
 
 ## 端点
 
@@ -14,7 +14,7 @@ import { TabItem, Tabs } from '@astrojs/starlight/components'
 | `POST /v1/images/generations` | 用文字生成图片 | JSON |
 | `POST /v1/images/edits` | 按文字修改上传的图片 | `multipart/form-data` |
 
-gpt-image 模型只能用这两个端点，每次返回 1 张 PNG，以 base64 编码放在 `data[0].b64_json` 里。三个模型单价相同，实测耗时和费用相近：`gpt-image-2.5-sunburst` 画质最好、编辑时最能保留原图细节，推荐使用；`gpt-image-2.5-flare` 偏重速度；`gpt-image-2` 是上一代。
+gpt-image 模型只能用这两个端点，每次返回 1 张 PNG，以 base64 编码放在 `data[0].b64_json` 里。五个模型单价相同，实测耗时和费用相近：`gpt-image-2.6-sunburst` 是最新一代，推荐使用；`gpt-image-2.6-flare` 由 OpenAI 定位为速度优先；`gpt-image-2.5-sunburst`、`gpt-image-2.5-flare` 和 `gpt-image-2` 是上一代。
 
 ## 请求示例
 
@@ -28,7 +28,7 @@ curl https://api.little-bear.app/v1/images/generations \
   -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-image-2.5-sunburst",
+    "model": "gpt-image-2.6-sunburst",
     "prompt": "一只小熊划着木船，夜晚的海面，满天星星"
   }' \
   | jq -r '.data[0].b64_json' | base64 --decode > bear.png
@@ -50,7 +50,7 @@ client = OpenAI(
 )
 
 result = client.images.generate(
-    model="gpt-image-2.5-sunburst",
+    model="gpt-image-2.6-sunburst",
     prompt="一只小熊划着木船，夜晚的海面，满天星星",
 )
 with open("bear.png", "wb") as f:
@@ -66,14 +66,14 @@ with open("bear.png", "wb") as f:
 
 | 参数 | 是否生效 | 说明 |
 | --- | --- | --- |
-| `model` | 生效 | 3 个 gpt-image 模型之一 |
+| `model` | 生效 | 5 个 gpt-image 模型之一 |
 | `prompt` | 生效 | 中文和英文都可以 |
 | `image`、`image[]` | 生效 | 只用于编辑，上传 1 张或多张图片 |
 | `background` | 生效 | 设为 `transparent` 生成透明背景的 PNG |
 | `stream` | 部分生效 | 生成期间只发心跳，图片在最后一次性返回，没有中间预览 |
 | `size`、`quality` | 忽略 | 由模型决定，详见 [尺寸与比例](#尺寸与比例) |
 | `n` | 忽略 | 每次只返回 1 张，要多张就发多次请求 |
-| `output_format`、`output_compression` | 忽略 | 始终返回 PNG |
+| `output_format`、`output_compression` | 忽略 | 始终返回 PNG。`svg` 也返回 PNG，并按普通图片计费；`gif` 返回 `400` |
 | `response_format` | 忽略 | 始终返回 `b64_json`，不返回图片链接 |
 | `moderation` | 忽略 | 固定为 `auto`，即 OpenAI 的标准审核 |
 
@@ -95,7 +95,7 @@ with open("bear.png", "wb") as f:
 ```bash
 curl https://api.little-bear.app/v1/images/edits \
   -H "Authorization: Bearer $XIAOXIONG_API_KEY" \
-  -F model=gpt-image-2.5-sunburst \
+  -F model=gpt-image-2.6-sunburst \
   -F image=@bear.png \
   -F prompt="给小熊戴一顶红色毛线帽，其他保持不变" \
   | jq -r '.data[0].b64_json' | base64 --decode > bear-hat.png

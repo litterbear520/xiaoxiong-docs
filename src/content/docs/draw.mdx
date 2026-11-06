@@ -7,7 +7,7 @@ import { Aside, Steps } from '@astrojs/starlight/components'
 
 在控制台的 **画图** 页，用一句话描述画面就能出图。不满意可以接着说怎么改，也可以圈出一块只改那里。费用从账户余额扣除，不需要自己配置 API 密钥。
 
-画图页只使用 3 个 gpt-image 模型。要使用 Gemini 图片模型，或在自己的程序里生成图片，详见 [图片生成](/docs/images/)。
+画图页只使用 5 个 gpt-image 模型。要使用 Gemini 图片模型，或在自己的程序里生成图片，详见 [图片生成](/docs/images/)。
 
 ## 画第一张图
 
@@ -33,7 +33,7 @@ import { Aside, Steps } from '@astrojs/starlight/components'
 
 - **比例** — 自动（默认）、方形、横版或竖版。方形 1254×1254，横版 1672×941，竖版 941×1672，自动由模型决定
 - **透明背景** — 生成透明背景的 PNG，约 $0.062 一张，是最贵的选项。默认关闭
-- **模型** — Sunburst（默认）、Flare 或 Image 2，单价相同。Sunburst 画质最好，改图时最能保留细节；Flare 速度优先；Image 2 是上一代
+- **模型** — Sunburst 2.6（默认）、Flare 2.6、Sunburst 2.5、Flare 2.5 或 Image 2，单价相同。Sunburst 2.6 是最新一代；Flare 由 OpenAI 定位为速度优先；Sunburst 2.5 和 Image 2 是上一代
 
 输入框右下角是这张图的预估价。最多可以同时画 3 张。
 
