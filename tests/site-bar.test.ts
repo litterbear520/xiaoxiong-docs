@@ -15,6 +15,7 @@ import {
 import { LABELS } from '../src/lib/site-bar/labels'
 import { lensAt, magnifierOpacity, nearestLink } from '../src/lib/site-bar/lens'
 import { dockRim, refractionMap, type RefractionMap } from '../src/lib/site-bar/refraction'
+import { arcAngle, landing, staysDark, veilOpacity } from '../src/lib/site-bar/theme-switch'
 
 const zh = LABELS.zhCN
 
@@ -340,5 +341,28 @@ describe('the first paint', () => {
     const ready = bar.indexOf('id="xx-bar-ready"')
     expect(script).toBeGreaterThan(bar.indexOf('class="xx-dock"'))
     expect(ready).toBeGreaterThan(scriptEnd)
+  })
+})
+
+describe('theme switch', () => {
+  it('rests the arc over the sun and under the moon', () => {
+    expect(arcAngle('right', 0, 0)).toBe(180)
+    expect(arcAngle('right', 1, 0)).toBe(0)
+    expect(arcAngle('left', 0, 0)).toBe(-180)
+  })
+  it('does not flicker at the middle of the track', () => {
+    expect(staysDark(true, 0.53)).toBe(true)
+    expect(staysDark(true, 0.55)).toBe(false)
+    expect(staysDark(false, 0.47)).toBe(false)
+    expect(staysDark(false, 0.45)).toBe(true)
+  })
+  it('lets a throw carry the knob past the middle', () => {
+    expect(landing(0.3, 0)).toBe(0)
+    expect(landing(0.3, 3)).toBe(1)
+  })
+  it('has no veil at the ends of the track', () => {
+    expect(veilOpacity(0)).toBe(0)
+    expect(veilOpacity(1)).toBe(0)
+    expect(veilOpacity(0.5)).toBeCloseTo(0.95)
   })
 })

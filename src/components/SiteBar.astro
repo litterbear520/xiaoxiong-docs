@@ -44,6 +44,8 @@ const labels = LABELS
 
     <div class="xx-search"><Search /></div>
 
+    <button type="button" data-theme-button aria-label={zh['Switch to dark theme']}></button>
+
     <button type="button" class="xx-icon" popovertarget="xx-language-menu" aria-label={zh['Change language']} data-la="Change language">
       <svg class="xx-i" viewBox="0 0 24 24" aria-hidden="true">
         <path d="m5 8 6 6" /><path d="m4 14 6-6 2-3" /><path d="M2 5h12" /><path d="M7 2h1" /><path d="m22 22-5-10-5 10" /><path d="M14 18h6" />
@@ -64,16 +66,6 @@ const labels = LABELS
         ))
       }
     </div>
-
-    <button type="button" class="xx-icon" data-theme-button aria-label={zh['Switch to dark theme']}>
-      <svg class="xx-theme-dark" viewBox="0 0 20 20" aria-hidden="true">
-        <path d="M9 3.69A6.65 6.65 0 1 0 15.73 13.11A6.5 6.5 0 0 1 9 3.69Z" />
-      </svg>
-      <svg class="xx-theme-light" viewBox="0 0 20 20" aria-hidden="true">
-        <circle cx="10" cy="10" r="3.5" />
-        <path d="M10 2.64v1.09M10 16.27v1.09M2.64 10h1.09M16.27 10h1.09M4.8 4.8l.77.77M14.43 14.43l.77.77M4.8 15.2l.77-.77M14.43 5.57l.77-.77" />
-      </svg>
-    </button>
 
     <button type="button" class="xx-icon xx-signed-in" popovertarget="xx-notifications" aria-label={zh.Notifications} data-la="Notifications">
       <svg class="xx-i" viewBox="0 0 24 24" aria-hidden="true">
@@ -199,6 +191,7 @@ const labels = LABELS
   import { LABELS, type LanguageCode } from '../lib/site-bar/labels'
   import { Lens, SWOLLEN, lensAt, nearestLink } from '../lib/site-bar/lens'
   import { DOCS_BASE } from '../site'
+  import { ThemeSwitch, type ThemeSwitchState } from '../lib/site-bar/theme-switch'
   import { BarMorph } from '../lib/site-bar/morph'
   import {
     ACCOUNT_NOTE_KEY,
@@ -211,7 +204,6 @@ const labels = LABELS
     LANGUAGE_KEY,
     LENS_HANDOFF_KEY,
     lensNote,
-    nextTheme,
     READ_MARKS_KEY,
     SESSION_HINT_COOKIE,
     siteLinks,
@@ -579,24 +571,38 @@ const labels = LABELS
   // --- theme: the console's setting, flipped like the console's button
   const currentTheme = (): Theme => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark')
   const themeButton = bar.querySelector<HTMLButtonElement>('[data-theme-button]')!
-  function updateThemeLabel() {
+  const themeSwitchState = (): ThemeSwitchState => {
     const words = LABELS[(bar.dataset.language as LanguageCode) ?? 'zhCN']
-    themeButton.setAttribute('aria-label', currentTheme() === 'dark' ? words['Switch to light theme'] : words['Switch to dark theme'])
+    return {
+      look: currentTheme(),
+      pinned: false,
+      nightFound: false,
+      labels: {
+        light: words['Switch to light theme'],
+        dark: words['Switch to dark theme'],
+        night: words['Switch to dark theme'],
+      },
+    }
+  }
+  const themeSwitch = new ThemeSwitch(themeButton, {
+    ...themeSwitchState(),
+    onLook: (look) => {
+      const theme: Theme = look === 'light' ? 'light' : 'dark'
+      try {
+        localStorage.setItem(THEME_KEY, theme)
+      } catch {
+        // storage blocked: the switch still works for this page
+      }
+      document.documentElement.dataset.theme = theme
+    },
+  })
+  function updateThemeLabel() {
+    themeSwitch.update(themeSwitchState())
   }
   function applyTheme(theme: Theme) {
     document.documentElement.dataset.theme = theme
     updateThemeLabel()
   }
-  themeButton.addEventListener('click', () => {
-    const theme = nextTheme(currentTheme())
-    try {
-      localStorage.setItem(THEME_KEY, theme)
-    } catch {
-      // storage blocked: the switch still works for this page
-    }
-    if (!document.startViewTransition || still.matches) applyTheme(theme)
-    else document.startViewTransition(() => applyTheme(theme))
-  })
   // ThemeProvider set the theme before the first paint; the tested rule has the last word.
   const chosen = storedTheme(read(THEME_KEY), null)
   if (chosen && chosen !== currentTheme()) applyTheme(chosen)
@@ -1138,19 +1144,6 @@ const labels = LABELS
     height: 1.2rem;
     stroke-width: 1.6;
   }
-  [data-theme-button] svg {
-    width: 1.25rem;
-    height: 1.25rem;
-    stroke-width: 1.27;
-  }
-  /* The theme a click goes to: the moon on a light page, the sun on a dark one. */
-  .xx-theme-light,
-  :root[data-theme='dark'] .xx-theme-dark {
-    display: none;
-  }
-  :root[data-theme='dark'] .xx-theme-light {
-    display: block;
-  }
   /* The console's destructive badge: a soft red pill with red figures. */
   .xx-badge {
     position: absolute;
@@ -1432,5 +1425,203 @@ const labels = LABELS
   .xx-empty {
     margin-top: 1rem !important;
     text-align: center;
+  }
+
+  /*
+   * The theme switch (theme-switch.ts). A script writes the variables on every
+   * frame the knob moves, so there are no CSS transitions here and nothing
+   * animates while it stands still. Two glasses cross-fade rather than one
+   * changing colour: their shadows differ too.
+   */
+  .tsw {
+    --tsw-glass: 0;
+    --tsw-arc: 180deg;
+    --tsw-glow: #7b86ff;
+    --tsw-core: #eceeff;
+    --tsw-wash: rgb(120 130 255 / 0.42);
+    --tsw-wash-x: 50%;
+    --tsw-wash-y: 100%;
+    --tsw-wash-w: 90%;
+    --tsw-wash-h: 62%;
+    position: relative;
+    flex: none;
+    width: 62px;
+    height: 32px;
+    margin: 0 2px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    outline: none;
+    cursor: grab;
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tsw[data-held] {
+    cursor: grabbing;
+  }
+  .tsw:focus-visible {
+    outline: 2px solid var(--sl-color-accent);
+    outline-offset: 2px;
+  }
+  .tsw::before,
+  .tsw::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+  .tsw::before {
+    background: rgb(0 0 0 / 0.42);
+    box-shadow:
+      inset 0 1px 2.5px rgb(0 0 0 / 0.6),
+      inset 0 0 0 0.5px rgb(0 0 0 / 0.4),
+      0 0.5px 0 rgb(255 255 255 / 0.1);
+    opacity: calc(1 - var(--tsw-glass));
+  }
+  .tsw::after {
+    background: rgb(16 18 28 / 0.075);
+    box-shadow:
+      inset 0 1px 2px rgb(0 0 0 / 0.16),
+      inset 0 -0.5px 0 rgb(255 255 255 / 0.6),
+      0 0 0 0.5px rgb(0 0 0 / 0.05);
+    opacity: var(--tsw-glass);
+  }
+  .tsw-knob {
+    position: absolute;
+    z-index: 1;
+    top: 2px;
+    left: 2px;
+    width: 32px;
+    height: 28px;
+    border-radius: 14px;
+  }
+  .tsw-bloom {
+    position: absolute;
+    inset: -3px;
+    border-radius: 18px;
+    background: conic-gradient(
+      from calc(var(--tsw-arc) - 74deg),
+      transparent 0deg,
+      var(--tsw-glow) 22deg,
+      var(--tsw-glow) 126deg,
+      transparent 148deg,
+      transparent 360deg
+    );
+    filter: blur(4px);
+    opacity: 0.9;
+  }
+  @media (hover: hover) {
+    .tsw:hover .tsw-bloom {
+      opacity: 1;
+    }
+  }
+  .tsw-body,
+  .tsw-glass,
+  .tsw-wash,
+  .tsw-body canvas,
+  .tsw-arcs {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+  .tsw-body canvas {
+    width: 100%;
+    height: 100%;
+  }
+  .tsw-glass-dark {
+    background: linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.22),
+      rgb(255 255 255 / 0.1)
+    );
+    box-shadow:
+      0 2px 6px rgb(0 0 0 / 0.5),
+      inset 0 0.5px 0 rgb(255 255 255 / 0.3),
+      inset 0 0 0 0.5px rgb(255 255 255 / 0.16);
+    opacity: calc(1 - var(--tsw-glass));
+  }
+  .tsw-glass-light {
+    background: linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.96),
+      rgb(245 242 236 / 0.9)
+    );
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.2),
+      0 3px 7px -2px rgb(0 0 0 / 0.22),
+      inset 0 0.5px 0 #fff,
+      inset 0 0 0 0.5px rgb(0 0 0 / 0.05);
+    opacity: var(--tsw-glass);
+  }
+  .tsw-wash {
+    background: radial-gradient(
+      var(--tsw-wash-w) var(--tsw-wash-h) at var(--tsw-wash-x) var(--tsw-wash-y),
+      var(--tsw-wash),
+      transparent 100%
+    );
+  }
+  .tsw-arcs {
+    pointer-events: none;
+    filter: drop-shadow(0 0 1px var(--tsw-glow))
+      drop-shadow(0 0 3px var(--tsw-glow));
+  }
+  .tsw-arc {
+    --tsw-arc-mask: conic-gradient(
+      from calc(var(--tsw-arc) - 72deg),
+      transparent 0deg,
+      #000 16deg,
+      #000 128deg,
+      transparent 144deg,
+      transparent 360deg
+    );
+    position: absolute;
+    inset: 0;
+    padding: 0.75px;
+    border-radius: inherit;
+    background: var(--tsw-core);
+    -webkit-mask:
+      var(--tsw-arc-mask),
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask:
+      var(--tsw-arc-mask),
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: source-in, xor;
+    mask-composite: intersect, exclude;
+  }
+  .tsw-arc-out {
+    inset: -2px;
+    border-radius: 16px;
+    opacity: 0.55;
+  }
+  /* Over the page, under the bar: the theme changes behind it. */
+  .tsw-veil {
+    position: fixed;
+    z-index: 9;
+    inset: 0;
+    display: none;
+    background: #9b9892;
+    pointer-events: none;
+    will-change: opacity;
+    contain: strict;
+  }
+  @media (forced-colors: active) {
+    .tsw {
+      border: 1px solid ButtonText;
+    }
+    .tsw-glass {
+      background: Canvas;
+      border: 1px solid ButtonText;
+      opacity: 1;
+    }
+    .tsw-bloom,
+    .tsw-wash,
+    .tsw-arcs {
+      display: none;
+    }
   }
 </style>
