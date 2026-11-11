@@ -265,20 +265,6 @@ const mix = (a: Rgba, b: Rgba, t: number) => a.map((v, i) => lerp(v, b[i], t))
 const css = (c: Rgba) =>
   `rgb(${Math.round(c[0])} ${Math.round(c[1])} ${Math.round(c[2])} / ${(c[3] ?? 1).toFixed(3)})`
 
-/**
- * Swaps the theme with every CSS transition off for that frame, the way
- * next-themes does: hundreds of colours fading at once would cost far more
- * than the swap and show as a second, slower change after the veil lifts.
- */
-function withoutTransitions(change: () => void) {
-  const style = document.createElement('style')
-  style.textContent = '*,*::before,*::after{transition:none!important}'
-  document.head.append(style)
-  change()
-  // this frame's style pass sees it; gone before the next one
-  requestAnimationFrame(() => style.remove())
-}
-
 export class ThemeSwitch {
   private readonly host: HTMLElement
   private readonly knob: HTMLElement
@@ -287,6 +273,7 @@ export class ThemeSwitch {
   private readonly still = matchMedia('(prefers-reduced-motion: reduce)')
   private readonly onLook: (look: ThemeLook) => void
   private veil: HTMLDivElement | null = null
+  private noTransitions: HTMLStyleElement | null = null
   private state: ThemeSwitchState
   private unwatchScale = () => {}
   private scale = 1
@@ -370,6 +357,8 @@ export class ThemeSwitch {
     host.replaceChildren()
     this.veil?.remove()
     this.veil = null
+    this.noTransitions?.remove()
+    this.noTransitions = null
   }
 
   // --- pointer
@@ -386,6 +375,7 @@ export class ThemeSwitch {
       moved: false,
     }
     this.host.dataset.held = ''
+    this.stopTransitions()
     this.kick()
   }
 
@@ -432,6 +422,7 @@ export class ThemeSwitch {
     if (this.left === 'dark' && nightFound && atRest) {
       this.following = false
       this.turnTarget = 1
+      this.stopTransitions()
       return this.kick()
     }
     this.aim(1)
@@ -446,6 +437,7 @@ export class ThemeSwitch {
   /** Before the knob sets off: which way the arc goes, and what is on the left. */
   private beginMove() {
     this.following = false
+    this.stopTransitions()
     this.dark = this.shown !== 'light'
     if (this.turnTarget === 1) {
       // on its way to 夜海: arrive at once, the knob now has somewhere to go
@@ -567,6 +559,7 @@ export class ThemeSwitch {
       this.render()
     }
     if (this.veil) this.veil.style.display = 'none'
+    this.allowTransitions()
     this.writeName()
   }
 
@@ -590,7 +583,31 @@ export class ThemeSwitch {
     if (this.turnTarget === 1 && this.turn >= 0.5) look = 'night'
     if (look === this.shown) return
     this.shown = look
-    withoutTransitions(() => this.onLook(look))
+    this.stopTransitions()
+    this.onLook(look)
+  }
+
+  /**
+   * The theme swaps with every CSS transition off, the way next-themes does:
+   * hundreds of colours fading at once would cost far more than the swap and
+   * show as a second, slower change after the veil lifts. Adding or removing
+   * the rule restyles the whole page, so it goes in when the move starts and
+   * comes out when it ends, not in the frame of the swap.
+   */
+  private stopTransitions() {
+    if (this.noTransitions) return
+    const style = document.createElement('style')
+    style.textContent = '*,*::before,*::after{transition:none!important}'
+    document.head.append(style)
+    this.noTransitions = style
+  }
+
+  private allowTransitions() {
+    const style = this.noTransitions
+    if (!style) return
+    this.noTransitions = null
+    // a swap in this very frame has yet to be styled: gone before the next one
+    requestAnimationFrame(() => style.remove())
   }
 
   // --- one frame
