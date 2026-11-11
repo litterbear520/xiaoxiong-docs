@@ -111,12 +111,18 @@ npm install -g @openai/codex
    | macOS / Linux | `~/.codex/config.toml` |
    | Windows | `%USERPROFILE%\.codex\config.toml` |
 
-   把下面的内容放在文件最前面：
+   把下面两行放在文件最前面：
 
    ```toml title="config.toml"
    model = "gpt-6.1-sol"
    model_provider = "xiaoxiong"
+   ```
 
+   `model` 和 `model_provider` 必须写在第一个 `[...]` 段落之前，写在后面 Codex 读不到。文件中已有这两行时直接修改，不要重复写。
+
+   再把下面的段落放在文件末尾：
+
+   ```toml title="config.toml"
    [model_providers.xiaoxiong]
    name = "小熊API"
    base_url = "https://api.little-bear.app/v1"
@@ -124,7 +130,7 @@ npm install -g @openai/codex
    wire_api = "responses"
    ```
 
-   `model` 和 `model_provider` 必须写在第一个 `[...]` 段落之前，写在后面 Codex 读不到。文件中已有这两行时直接修改，不要重复写。
+   不要把这个段落放在文件最前面：它后面原有的设置会被当成这个段落的内容。文件中已有 `[model_providers.xiaoxiong]` 时，替换整个段落。
 
 </Steps>
 

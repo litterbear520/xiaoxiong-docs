@@ -603,13 +603,23 @@ const labels = LABELS
     document.documentElement.dataset.theme = theme
     updateThemeLabel()
   }
-  // ThemeProvider set the theme before the first paint; the tested rule has the last word.
-  const chosen = storedTheme(read(THEME_KEY), null)
-  if (chosen && chosen !== currentTheme()) applyTheme(chosen)
-  matchMedia('(prefers-color-scheme: light)').addEventListener('change', (event) => {
-    const saved = read(THEME_KEY)
-    if (saved !== 'light' && saved !== 'dark') applyTheme(event.matches ? 'light' : 'dark')
+  // The saved choice, else the system. ThemeProvider set it before the first paint; the
+  // tested rule has the last word, again whenever the choice may have changed meanwhile:
+  // back from the back/forward cache, shown after a prerender, or set in another tab.
+  const systemLight = matchMedia('(prefers-color-scheme: light)')
+  function syncTheme() {
+    const theme = storedTheme(read(THEME_KEY), null) ?? (systemLight.matches ? 'light' : 'dark')
+    if (theme !== currentTheme()) applyTheme(theme)
+  }
+  syncTheme()
+  systemLight.addEventListener('change', syncTheme)
+  addEventListener('pageshow', (event) => {
+    if (event.persisted) syncTheme()
   })
+  addEventListener('storage', (event) => {
+    if (event.key === THEME_KEY) syncTheme()
+  })
+  document.addEventListener('prerenderingchange', syncTheme, { once: true })
 
   // --- language: the console's setting; the docs' own pages stay in Chinese
   for (const item of bar.querySelectorAll<HTMLButtonElement>('[data-language]')) {

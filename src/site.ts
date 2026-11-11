@@ -47,9 +47,10 @@ export const movedPages: Record<string, string> = {
   account: 'billing',
 }
 
-// Old anchors on a moved page whose section went to a different new page.
+// Old anchors on a moved page whose section went to a different new page:
+// `page` keeps the old anchor, `page#heading` when the heading changed too.
 export const movedAnchors: Record<string, Record<string, string>> = {
-  'models-and-billing': { 计费方式: 'billing', 余额与充值: 'billing', 用量与限额: 'billing' },
+  'models-and-billing': { 计费方式: 'billing', 余额与充值: 'billing', 用量与限额: 'billing#密钥额度' },
 }
 
 export const consoleLinks = [
@@ -58,6 +59,7 @@ export const consoleLinks = [
   '/dashboard/models',
   '/keys',
   '/draw',
+  '/draw/classic',
   '/wallet',
   '/pricing',
   '/usage-logs/common',

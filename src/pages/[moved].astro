@@ -2,7 +2,7 @@
 // Redirect pages for docs addresses that moved (see movedPages in src/site.ts).
 // A static site has no server redirects, so each old address serves this page:
 // a meta refresh for any client, and a script that keeps the #anchor, sending
-// it to a different page when that section moved there.
+// it to a different page (and heading) when that section moved there.
 import { movedAnchors, movedPages, SITE_ORIGIN } from '../site'
 
 export function getStaticPaths() {
@@ -15,7 +15,12 @@ export function getStaticPaths() {
 const { to, anchors } = Astro.props
 const base = import.meta.env.BASE_URL.replace(/\/$/, '')
 const target = `${base}/${to}/`
-const anchorTargets = Object.fromEntries(Object.entries(anchors).map(([anchor, page]) => [anchor, `${base}/${page}/`]))
+const anchorTargets = Object.fromEntries(
+  Object.entries(anchors).map(([anchor, to]) => {
+    const [page, heading] = to.split('#')
+    return [anchor, heading ? `${base}/${page}/#${heading}` : `${base}/${page}/`]
+  })
+)
 ---
 
 <!doctype html>
@@ -27,8 +32,8 @@ const anchorTargets = Object.fromEntries(Object.entries(anchors).map(([anchor, p
     <link rel="canonical" href={`${SITE_ORIGIN}${target}`} />
     <meta http-equiv="refresh" content={`0;url=${target}`} />
     <script is:inline define:vars={{ target, anchorTargets }}>
-      const anchor = decodeURIComponent(location.hash.slice(1))
-      location.replace((anchorTargets[anchor] ?? target) + location.hash)
+      const moved = anchorTargets[decodeURIComponent(location.hash.slice(1))]
+      location.replace(moved?.includes('#') ? moved : (moved ?? target) + location.hash)
     </script>
   </head>
   <body>

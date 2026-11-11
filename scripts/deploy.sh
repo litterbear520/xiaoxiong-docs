@@ -18,7 +18,8 @@ node scripts/compress.mjs dist
 
 REL=$(date +%Y%m%d-%H%M)-$(git rev-parse --short HEAD 2>/dev/null || echo nocommit)
 { git diff --quiet HEAD -- . && [ -z "$(git ls-files --others --exclude-standard)" ]; } 2>/dev/null || REL=$REL-dirty
-ssh "$DEPLOY_HOST" "mkdir -p $DEPLOY_ROOT/xiaoxiong-docs-releases/$REL"
+# no -p: a second deploy in the same minute must fail here, not upload into the live release
+ssh "$DEPLOY_HOST" "mkdir $DEPLOY_ROOT/xiaoxiong-docs-releases/$REL"
 rsync -a dist/ "$DEPLOY_HOST:$DEPLOY_ROOT/xiaoxiong-docs-releases/$REL/"
 
 # Copy hashed assets of the live release that are under a week old into the new one, so pages
