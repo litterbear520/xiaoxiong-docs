@@ -3,6 +3,11 @@ title: 更新日志
 description: 小熊API 的模型、价格、线路和文档变化
 ---
 
+## 2026-11-10
+
+- 文档补充 GPT 模型的缓存读取说明：哪些请求读不到缓存，见 [计费与充值](/docs/billing/#缓存读取)。[OpenCode](/docs/tools/opencode/#缓存读取) 页加入实测数据。
+- [OpenCode](/docs/tools/opencode/#常见问题) 页说明使用日志中 `400 Unsupported value: 'none'` 的来源：这是 OpenCode 生成会话标题的请求，它会自动再发一次，失败的那次不扣费。
+
 ## 2026-11-06
 
 - 新增图片模型 `gpt-image-2.6-sunburst` 和 `gpt-image-2.6-flare`，价格和 2.5 相同。网页画图的默认模型改为 Sunburst 2.6，见 [图片生成](/docs/images/)。这两个模型暂不提供 GIF 和 SVG 输出。

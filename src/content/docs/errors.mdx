@@ -30,6 +30,7 @@ description: 按状态码和报错原文查原因和处理方法
 | 状态码 | 错误信息 | 原因 | 处理方法 |
 | --- | --- | --- | --- |
 | 400 | `Invalid request: invalid JSON request body` | 请求体不是合法的 JSON | 检查引号、逗号和括号；PowerShell 的写法详见 [认证](/docs/auth/#windows-powershell) |
+| 400 | `Unsupported value: 'none' is not supported with the 'gpt-6.1-sol' model` | 参数的取值这个模型不支持，例如推理强度 `none` | 改用报错中列出的取值。OpenCode 生成会话标题时也会出现，详见 [OpenCode](/docs/tools/opencode/#常见问题) |
 | 400 | 上游的内容审核提示，内容不固定 | 提示词或图片违反模型厂商的使用政策 | 修改提示词或图片，被拒绝的请求不扣费 |
 | 401 | `Invalid token` 或 `无效的令牌` | 密钥没传、抄错、放错请求头，或已过期、额度用完、被停用 | 详见 [Invalid token](#invalid-token) |
 | 403 | `This token has no access to model …` | 这个密钥设置了模型限制 | 换模型，或在 [API 密钥](/keys) 页修改模型限制 |

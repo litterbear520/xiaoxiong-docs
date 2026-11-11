@@ -147,7 +147,7 @@ console.log(response.output_text)
 | `stream` | 生效 | 详见 [流式响应](#流式响应) |
 | `tools` | 生效 | 工具调用（函数调用） |
 | `response_format` | 生效 | JSON 输出 |
-| `reasoning_effort` | 生效 | 推理强度 |
+| `reasoning_effort` | 生效 | 推理强度。`gpt-6.1-sol` 支持 `low`、`medium`、`high`、`xhigh`、`max`，传 `none` 报 `400` |
 | `temperature`、`top_p` | 忽略 | 设置了不报错，但不起作用 |
 | `max_tokens`、`max_completion_tokens`、`max_output_tokens` | 忽略 | 不能限制输出长度，想要短回答就在提示词里说明 |
 | `stop` | 忽略 | 不会在停止词处截断 |

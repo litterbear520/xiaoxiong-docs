@@ -154,6 +154,22 @@ opencode run -m xiaoxiong/claude-sonnet-4-6 "Reply with exactly: gateway-ok"
 
 日常使用时，进入项目目录运行 `opencode`，用的是 `model` 指定的模型。想换默认模型，改 `model` 这一行，例如改成 `xiaoxiong/gpt-6.1-sol`。
 
+## 缓存读取
+
+GPT 模型的缓存不用配置，本页的配置已经能读到缓存。以下是 2026 年 11 月用 OpenCode 2.2 和 `gpt-6.1-sol` 实测的结果，共 5 个会话，每个会话连发 3 条消息，每条消息的输入约 4500 个 token：
+
+| 请求 | 缓存读取 |
+| --- | --- |
+| 第 1 条消息 | 0。几分钟内用过 OpenCode 时为 2048 |
+| 第 2 条消息 | 2048 到 4352 |
+| 第 3 条消息 | 4352。5 个会话中有 1 个是 0 |
+
+- OpenCode 显示的缓存读取与 [使用日志](/usage-logs/common) 中的一致。
+- OpenCode 还会另发一个生成会话标题的请求，约 450 个 token。这个请求太短，不会缓存。
+- 把 GPT 模型接成 `@ai-sdk/openai-compatible` 的配置同样能读到缓存，不用改成本页的写法。
+
+缓存读取是 0 的几种情况详见 [计费与充值](/docs/billing/#缓存读取)。
+
 ## 常见问题
 
 | 报错 | 原因 | 解决办法 |
@@ -162,6 +178,7 @@ opencode run -m xiaoxiong/claude-sonnet-4-6 "Reply with exactly: gateway-ok"
 | `UnexpectedStatus: 403`，请求还没发出就报错 | 终端设了 `HTTP_PROXY` 或 `HTTPS_PROXY` 代理，OpenCode 2 连本机后台服务时也走了代理 | 再设一个 `NO_PROXY=127.0.0.1,localhost,::1`，然后运行 `opencode service restart` |
 | 等一两分钟后报 `The provider response ended unexpectedly.` | `baseURL` 漏了 `/v1`，OpenCode 收到的是网页，不是模型的回答 | 改成 `https://api.little-bear.app/v1` |
 | `Model unavailable: xiaoxiong/…` | 配置文件的 `models` 里没有这个模型 | 把模型加进 `models`，或改用已有的模型 |
+| 使用日志中出现 `400 Unsupported value: 'none' is not supported with the 'gpt-6.1-sol' model` | OpenCode 生成会话标题时把推理强度设为 `none`，GPT 模型不支持这个值 | 不用处理。OpenCode 会去掉这个参数再发一次，失败的那次不扣费，回答不受影响 |
 | `No available channel for model …` | 小熊API 没有这个模型 | 把模型名改成 [模型广场](/pricing) 中的名字，例如 `claude-sonnet-4-6` |
 
 OpenCode 的完整配置说明请参阅官方的 [服务商文档](https://opencode.ai/docs/providers/)。
