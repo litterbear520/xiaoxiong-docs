@@ -136,7 +136,7 @@ npm install -g @opencode/cli
 | `name` | 在 OpenCode 中显示的名称 |
 | `options.baseURL` | 小熊API 的地址，**带** `/v1`。这一点和 Claude Code 不同：OpenCode 会在地址后面接 `/messages` 或 `/responses` |
 | `options.apiKey` | `{env:XIAOXIONG_API_KEY}` 表示从这个环境变量读取密钥 |
-| `models` | 在 OpenCode 中可选的模型，名字必须与 [模型广场](/pricing) 中的完全一致。要加 `kimi-k3`、`deepseek-3.2` 这类模型，照着 `glm-5` 那一项再写一项 |
+| `models` | 在 OpenCode 中可选的模型，名字必须与 [模型广场](/pricing) 中的完全一致。要加 `minimax-m2.5`、`deepseek-3.2` 这类模型，照着 `glm-5` 那一项再写一项 |
 | `provider.npm` | 单个模型改用别的接口格式。GPT 模型写 `@ai-sdk/openai`，走 OpenAI 的 Responses 接口（Codex 用的也是它）。要加 `gpt-6-luna`，照着 `gpt-6.2-sol` 那一项写 |
 | `limit` | `context` 是上下文长度，`output` 是每次回答最多输出的 token 数，单位都是 token。OpenCode 据此显示还剩多少上下文 |
 
