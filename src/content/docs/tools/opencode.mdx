@@ -97,8 +97,8 @@ npm install -g @opencode/cli
              "name": "GLM-5",
              "limit": { "context": 200000, "output": 32000 }
            },
-           "gpt-6.1-sol": {
-             "name": "GPT-6.1 Sol",
+           "gpt-6.2-sol": {
+             "name": "GPT-6.2 Sol",
              "provider": { "npm": "@ai-sdk/openai" },
              "limit": { "context": 272000, "output": 128000 }
            }
@@ -110,7 +110,7 @@ npm install -g @opencode/cli
 
    文件中原来就有 `provider` 的话，把 `"xiaoxiong": { … }` 这一段加进已有的 `provider`，不要写两个 `provider`。
 
-   保存后运行 `opencode models`，列表中出现 `xiaoxiong/claude-sonnet-4-6`、`xiaoxiong/glm-5` 和 `xiaoxiong/gpt-6.1-sol`，说明 OpenCode 读到了配置。
+   保存后运行 `opencode models`，列表中出现 `xiaoxiong/claude-sonnet-4-6`、`xiaoxiong/glm-5` 和 `xiaoxiong/gpt-6.2-sol`，说明 OpenCode 读到了配置。
 
 3. **重启 OpenCode 的后台服务**（仅 OpenCode 2）
 
@@ -137,7 +137,7 @@ npm install -g @opencode/cli
 | `options.baseURL` | 小熊API 的地址，**带** `/v1`。这一点和 Claude Code 不同：OpenCode 会在地址后面接 `/messages` 或 `/responses` |
 | `options.apiKey` | `{env:XIAOXIONG_API_KEY}` 表示从这个环境变量读取密钥 |
 | `models` | 在 OpenCode 中可选的模型，名字必须与 [模型广场](/pricing) 中的完全一致。要加 `kimi-k3`、`deepseek-3.2` 这类模型，照着 `glm-5` 那一项再写一项 |
-| `provider.npm` | 单个模型改用别的接口格式。GPT 模型写 `@ai-sdk/openai`，走 OpenAI 的 Responses 接口（Codex 用的也是它）。要加 `gpt-6-luna`，照着 `gpt-6.1-sol` 那一项写 |
+| `provider.npm` | 单个模型改用别的接口格式。GPT 模型写 `@ai-sdk/openai`，走 OpenAI 的 Responses 接口（Codex 用的也是它）。要加 `gpt-6-luna`，照着 `gpt-6.2-sol` 那一项写 |
 | `limit` | `context` 是上下文长度，`output` 是每次回答最多输出的 token 数，单位都是 token。OpenCode 据此显示还剩多少上下文 |
 
 这份配置用的是 `provider` 写法，OpenCode 1 和 2 都认。OpenCode 2 自己的新写法是 `providers`，所以编辑器可能把 `provider` 标成已弃用，不影响使用。
@@ -150,9 +150,9 @@ npm install -g @opencode/cli
 opencode run -m xiaoxiong/claude-sonnet-4-6 "Reply with exactly: gateway-ok"
 ```
 
-打印出 `gateway-ok`，说明接入成功。把模型换成 `xiaoxiong/glm-5` 和 `xiaoxiong/gpt-6.1-sol` 各试一次，可以确认 3 个模型都能用。
+打印出 `gateway-ok`，说明接入成功。把模型换成 `xiaoxiong/glm-5` 和 `xiaoxiong/gpt-6.2-sol` 各试一次，可以确认 3 个模型都能用。
 
-日常使用时，进入项目目录运行 `opencode`，用的是 `model` 指定的模型。想换默认模型，改 `model` 这一行，例如改成 `xiaoxiong/gpt-6.1-sol`。
+日常使用时，进入项目目录运行 `opencode`，用的是 `model` 指定的模型。想换默认模型，改 `model` 这一行，例如改成 `xiaoxiong/gpt-6.2-sol`。
 
 ## 缓存读取
 

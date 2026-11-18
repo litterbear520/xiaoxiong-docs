@@ -88,7 +88,7 @@ macOS 和 Linux 也可以用 npm 安装，命令与 Windows 相同。安装后�
          "apiKey": "$XIAOXIONG_API_KEY",
          "models": [
            {
-             "id": "gpt-6.1-sol",
+             "id": "gpt-6.2-sol",
              "reasoning": true,
              "input": ["text", "image"],
              "contextWindow": 272000
@@ -140,7 +140,7 @@ macOS 和 Linux 也可以用 npm 安装，命令与 Windows 相同。安装后�
 | `baseUrl` | 小熊API 的地址。GPT 模型用 OpenAI 格式，地址带 `/v1`；Claude 模型在自己那一项中改成**不带** `/v1` 的地址 |
 | `api` | 接口格式。`openai-responses` 是 OpenAI 的 Responses 接口（Codex 用的也是它），`anthropic-messages` 是 Claude 格式 |
 | `apiKey` | `$XIAOXIONG_API_KEY` 表示从这个环境变量读取密钥 |
-| `models` | 在 Pi 中可选的模型。`id` 必须与 [模型广场](/pricing) 中的名字完全一致。要加别的模型（例如 `gpt-6-astra`），照着同一系列的那一项再写一项 |
+| `models` | 在 Pi 中可选的模型。`id` 必须与 [模型广场](/pricing) 中的名字完全一致。要加别的模型（例如 `gpt-6.2-astra`），照着同一系列的那一项再写一项 |
 | `reasoning` | 模型会思考。Pi 默认的思考强度是 `medium`，在对话中用 `/thinking` 调整 |
 | `input` | 模型能读取的内容。写上 `image` 才能在 Pi 中发送图片 |
 | `contextWindow` | 上下文长度，单位是 token。对话接近这个长度时，Pi 会自动压缩之前的对话 |
@@ -166,7 +166,7 @@ pi --model xiaoxiong/gpt-6-luna -p "Reply with exactly: gateway-ok"
 | `No models available. Use /login to log into a provider…` | Pi 读不到密钥，没有密钥的服务商不会显示模型 | macOS / Linux 运行 `echo $XIAOXIONG_API_KEY`，确认能打印出密钥；Windows 用 `setx` 后要重开终端 |
 | `Failed to parse models.json` | 配置文件的 JSON 格式不对 | 按报错中的行号和列号检查引号、逗号和括号 |
 | `401` 或 `Invalid token` | 密钥错误或已失效 | 详见 [错误码](/docs/errors/) |
-| `No available channel for model …` | 小熊API 没有这个模型 | 把 `id` 改成 [模型广场](/pricing) 中的名字，例如 `gpt-6.1-sol` |
+| `No available channel for model …` | 小熊API 没有这个模型 | 把 `id` 改成 [模型广场](/pricing) 中的名字，例如 `gpt-6.2-sol` |
 | Claude 模型报 `Invalid URL (POST /v1/v1/messages)` | Claude 那一项的 `baseUrl` 多写了 `/v1` | 改成 `https://api.little-bear.app` |
 | 让 Pi 生成图片，没有得到图片 | GPT 和 Claude 对话模型不生成图片 | 改用图片接口，详见 [图片生成](/docs/images/) |
 

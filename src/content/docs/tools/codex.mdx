@@ -9,7 +9,7 @@ import { Aside, Steps, TabItem, Tabs } from '@astrojs/starlight/components'
 
 ## 概述
 
-Codex 是 OpenAI 推出的编程助手，可以读写项目文件、执行命令，接入后不需要 ChatGPT 账号。它只通过 [OpenAI 格式](/docs/openai/) 的 Responses 接口调用模型，使用小熊API 的 GPT 模型：写代码推荐 `gpt-6.1-sol`，想省钱用 `gpt-6-luna`。
+Codex 是 OpenAI 推出的编程助手，可以读写项目文件、执行命令，接入后不需要 ChatGPT 账号。它只通过 [OpenAI 格式](/docs/openai/) 的 Responses 接口调用模型，使用小熊API 的 GPT 模型：写代码推荐 `gpt-6.2-sol`，想省钱用 `gpt-6-luna`。
 
 ## 前置条件
 
@@ -45,7 +45,7 @@ npm install -g @openai/codex
 
 2. **选择应用和模型**
 
-   **应用** 选 **Codex**，**名称** 改为 `小熊API`，**主模型** 填 `gpt-6.1-sol`。想省钱可以改为 `gpt-6-luna`。
+   **应用** 选 **Codex**，**名称** 改为 `小熊API`，**主模型** 填 `gpt-6.2-sol`。想省钱可以改为 `gpt-6-luna`。
 
    <div class="shot" style="--w: 496px">
 
@@ -70,7 +70,7 @@ npm install -g @openai/codex
 | 名称 | `小熊API` |
 | API Key | 你的密钥，以 `sk-` 开头 |
 | API 请求地址 | `https://api.little-bear.app/v1` |
-| 默认模型 | `gpt-6.1-sol` |
+| 默认模型 | `gpt-6.2-sol` |
 
 ## 手动配置
 
@@ -114,7 +114,7 @@ npm install -g @openai/codex
    把下面两行放在文件最前面：
 
    ```toml title="config.toml"
-   model = "gpt-6.1-sol"
+   model = "gpt-6.2-sol"
    model_provider = "xiaoxiong"
    ```
 
@@ -154,7 +154,7 @@ npm install -g @openai/codex
 codex exec "Reply with exactly: gateway-ok"
 ```
 
-输出最后打印 `gateway-ok`，说明接入成功。手动配置时，开头的信息中还会显示 `model: gpt-6.1-sol` 和 `provider: xiaoxiong`。
+输出最后打印 `gateway-ok`，说明接入成功。手动配置时，开头的信息中还会显示 `model: gpt-6.2-sol` 和 `provider: xiaoxiong`。
 
 之后进入项目目录运行 `codex` 即可使用，在对话中输入 `/status` 可以查看当前的模型和服务商。
 
@@ -164,7 +164,7 @@ codex exec "Reply with exactly: gateway-ok"
 | --- | --- | --- |
 | `Missing environment variable: XIAOXIONG_API_KEY` | Codex 读不到环境变量 | Windows 用 `setx` 后要重开终端；macOS / Linux 确认改的是自己 shell 的配置文件，然后重开终端 |
 | `unexpected status 401 Unauthorized: Invalid token` | 密钥错误或已失效 | 详见 [错误码](/docs/errors/) |
-| `unexpected status 503 Service Unavailable: No available channel for model …` | 小熊API 没有这个模型 | 把 `model` 改成 [模型广场](/pricing) 中的名字，例如 `gpt-6.1-sol` |
+| `unexpected status 503 Service Unavailable: No available channel for model …` | 小熊API 没有这个模型 | 把 `model` 改成 [模型广场](/pricing) 中的名字，例如 `gpt-6.2-sol` |
 | 开头显示的 `provider` 不是 `xiaoxiong` | `model_provider` 没有生效 | 确认这两行在文件最前面，第一个 `[...]` 之前 |
 | 反复出现 `Reconnecting... 1/5` 后报连接错误 | 当前线路无法连接。报错前出现几次 `Reconnecting...` 是 Codex 在自动重试，属于正常现象 | 换一条 [线路](/docs/lines/)，修改 `base_url` 的域名 |
 | 让 Codex 生成图片，没有得到图片 | GPT 对话模型不生成图片 | 改用图片接口，详见 [图片生成](/docs/images/) |
