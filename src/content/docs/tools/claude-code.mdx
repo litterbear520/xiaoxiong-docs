@@ -120,17 +120,13 @@ irm https://claude.ai/install.ps1 | iex
 
    | 角色 | 模型 |
    | --- | --- |
-   | Sonnet | `claude-sonnet-5-5` |
-   | Opus | `claude-opus-5-5` |
-   | Fable | `claude-fable-5-1` |
-   | Haiku | `claude-haiku-5-5` |
+   | Sonnet | `claude-sonnet-4-6` |
+   | Opus | `claude-opus-4-6` |
+   | Fable | 留空 |
+   | Haiku | `gpt-6-luna` |
    | Subagent | 留空 |
 
-   **默认兜底模型** 填 `claude-sonnet-5-5`，这是 Claude Code 启动时使用的模型。
-
-   如果想和一键导入使用相同的模型：Sonnet 和 **默认兜底模型** 填 `claude-sonnet-4-6`，Opus 填 `claude-opus-4-6`，Haiku 填 `gpt-6-luna`。
-
-   ![高级选项里的模型映射：Sonnet、Opus、Fable 和 Haiku 都填好了，Subagent 空着，默认兜底模型是 claude-sonnet-5-5](../../../assets/cc-switch/model-mapping.png)
+   **默认兜底模型** 填 `claude-sonnet-4-6`，这是 Claude Code 启动时使用的模型。这些模型和一键导入相同。小熊API 没有 Fable 模型，所以 Fable 留空。
 
 4. **保存并切换**
 
